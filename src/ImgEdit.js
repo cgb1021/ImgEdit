@@ -1,15 +1,15 @@
-const extReg = /\.(?:png|jpg|jpeg|gif|bmp)$/i
+/*
+ * 图片编辑器
+ */
+const undefined = void 0
 const data = {}
 // input元素监听事件
 function inputListener (e) {
-  const reg = this.extReg || extReg
-  if (reg.test(e.target.files[0].name)) {
-    const fileReader = new FileReader()
-    fileReader.onload = (res) => {
-      this.draw(res.target.result)
-    }
-    fileReader.readAsDataURL(e.target.files[0])
+  const fileReader = new FileReader()
+  fileReader.onload = (res) => {
+    this.draw(res.target.result)
   }
+  fileReader.readAsDataURL(e.target.files[0])
 }
 /* 
  * 加载图片
@@ -59,10 +59,8 @@ class ImgEdit {
               case 'height':
                 this.canvas.height = option.height
                 break
-              case 'input': this.listen(option.input)
+              case 'input': this.listen(option.input, option.listenHook)
                 break
-              case 'extReg': this.extReg = option.extReg
-                break;
             }
           }
         }
@@ -79,14 +77,21 @@ class ImgEdit {
     data[this] = this.input = this.canvas = null
   }
   // 监听输入源(<input type=file>)变化
-  listen (el) {
-    data[this].inputListener = inputListener.bind(this)
+  listen (el, hook) {
+    if (typeof hook === 'function')
+      data[this].inputListener = (e) => {
+        const res = hook(e)
+        if (res === undefined || res)
+          inputListener.bind(this)(e)
+      }
+    else
+      data[this].inputListener = inputListener.bind(this)
     this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el)
     this.input.addEventListener('change', data[this].inputListener)
   }
   // 删除输入源监听
   unlisten () {
-    this.input.removeEventListener('change', data[this].inputListener)
+    this.input && this.input.removeEventListener('change', data[this].inputListener)
   }
   // 图片资源(base64)/图片地址
   async draw (file) {
