@@ -59,7 +59,7 @@ class ImgEdit {
               case 'height':
                 this.canvas.height = option.height
                 break
-              case 'input': this.listen(option.input, option.listenHook)
+              case 'input': this.listen(option.input, option.inputListener)
                 break
             }
           }
