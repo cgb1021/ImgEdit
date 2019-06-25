@@ -1,0 +1,33 @@
+{
+  "name": "imgedit",
+  "version": "0.0.1",
+  "description": "HTML5 img editor",
+  "main": "index.js",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "clean": "rm -rf lib/* dist/*",
+    "lib": "babel src --out-dir lib",
+    "build": "npm run clean && npm run lib && rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cgb1021/ImgEdit.git"
+  },
+  "keywords": [
+    "img",
+    "image",
+    "canvas"
+  ],
+  "author": "cgb1021",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cgb1021/ImgEdit/issues"
+  },
+  "homepage": "https://github.com/cgb1021/ImgEdit#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-stage-2": "^6.24.1"
+  }
+}
