@@ -28,6 +28,7 @@
   "homepage": "https://github.com/cgb1021/ImgEdit#readme",
   "devDependencies": {
     "babel-cli": "^6.26.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-stage-2": "^6.24.1"
   }
 }
