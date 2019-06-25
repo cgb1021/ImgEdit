@@ -1,11 +1,22 @@
 const extReg = /\.(?:png|jpg|jpeg|gif|bmp)$/i
 const data = {}
+// input元素监听事件
 function inputListener (e) {
   const reg = this.extReg || extReg
   if (reg.test(e.target.files[0].name)) {
-    this.img(e.target.files[0])
+    const fileReader = new FileReader()
+    fileReader.onload = (res) => {
+      this.draw(res.target.result)
+    }
+    fileReader.readAsDataURL(e.target.files[0])
   }
 }
+/* 
+ * 加载图片
+ *
+ * @param {string} src url/base64
+ * @return {object} promise
+ */
 async function loadImg(src) {
   const img = new Image();
   img.crossOrigin = "anonymous";
@@ -20,6 +31,15 @@ async function loadImg(src) {
     }
     img.src = src;
   })
+}
+/* 
+ * 画图
+ *
+ * @param {string} base64
+ * @param {object} context
+ */
+function dwaw (base64, context) {
+  context.drawImage(base64, 0, 0)
 }
 class ImgEdit {
   constructor (option) {
@@ -39,7 +59,7 @@ class ImgEdit {
               case 'height':
                 this.canvas.height = option.height
                 break
-              case 'file': this.listen(option.file)
+              case 'input': this.listen(option.input)
                 break
               case 'extReg': this.extReg = option.extReg
                 break;
@@ -54,6 +74,10 @@ class ImgEdit {
       throw 'no canvas element'
     }
   }
+  destroy () {
+    this.unlisten()
+    data[this] = this.input = this.canvas = null
+  }
   // 监听输入源(<input type=file>)变化
   listen (el) {
     data[this].inputListener = inputListener.bind(this)
@@ -64,14 +88,10 @@ class ImgEdit {
   unlisten () {
     this.input.removeEventListener('change', data[this].inputListener)
   }
-  // 图片资源/图片地址
-  async img (file) {
+  // 图片资源(base64)/图片地址
+  async draw (file) {
     const img = await loadImg(file)
-    const context = this.canvas.getContext('2d')
-    context.drawImage(img, 0, 0)
-  }
-  destroy () {
-    data[this] = null
+    dwaw(img, this.canvas.getContext('2d'))
   }
 }
 
