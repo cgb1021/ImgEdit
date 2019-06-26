@@ -9,7 +9,7 @@ const data = {}
  * @param {string} src url/base64
  * @return {object} promise
  */
-function loadImg (src) {
+export function loadImg (src) {
   const img = new Image();
   img.crossOrigin = "anonymous";
   return new Promise((res, rej) => {
@@ -29,7 +29,7 @@ function loadImg (src) {
  * @param {object} file
  * @return {object} promise
  */
-function readFile (file) {
+export function readFile(file) {
   const fileReader = new FileReader
   return new Promise((res) => {
     fileReader.onload = (e) => {
@@ -118,20 +118,16 @@ class ImgEdit {
   }
   // 图片资源(base64)/图片地址
   async draw (file) {
-    const img = await loadImg(typeof file === 'object'
-      ? await readFile(file)
-      : file)
+    const img = file instanceof HTMLImageElement
+      ? file
+      : (await loadImg(typeof file === 'object'
+        ? await readFile(file)
+        : file))
     dwaw(img, this.canvas.getContext('2d'))
   }
-}
-
-// 输入源
-export const input = () => {
-  console.log('Hello world')
-}
-// 输出
-export const output = () => {
-  console.log('output')
+  toDataURL (mime) {
+    return this.canvas.toDataURL(mime ? mime : 'image/jpeg')
+  }
 }
 
 export default ImgEdit;

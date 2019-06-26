@@ -35,7 +35,7 @@
    * @param {object} file
    * @return {object} promise
    */
-  function readFile (file) {
+  function readFile(file) {
     const fileReader = new FileReader;
     return new Promise((res) => {
       fileReader.onload = (e) => {
@@ -124,25 +124,21 @@
     }
     // 图片资源(base64)/图片地址
     async draw (file) {
-      const img = await loadImg(typeof file === 'object'
-        ? await readFile(file)
-        : file);
+      const img = file instanceof HTMLImageElement
+        ? file
+        : (await loadImg(typeof file === 'object'
+          ? await readFile(file)
+          : file));
       dwaw(img, this.canvas.getContext('2d'));
+    }
+    toDataURL (mime) {
+      return this.canvas.toDataURL(mime ? mime : 'image/jpeg')
     }
   }
 
-  // 输入源
-  const input = () => {
-    console.log('Hello world');
-  };
-  // 输出
-  const output = () => {
-    console.log('output');
-  };
-
   exports.default = ImgEdit;
-  exports.input = input;
-  exports.output = output;
+  exports.loadImg = loadImg;
+  exports.readFile = readFile;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 
