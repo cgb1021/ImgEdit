@@ -86,10 +86,6 @@ class ImgEdit {
       }
     } else
       this.canvas = document.querySelector(option)
-    if (!this.canvas || typeof this.canvas !== 'object' || !(this.canvas instanceof HTMLCanvasElement)) {
-      data[this] = null
-      throw 'no canvas element'
-    }
   }
   destroy () {
     this.unlisten()
@@ -127,6 +123,12 @@ class ImgEdit {
   }
   toDataURL (mime) {
     return this.canvas.toDataURL(mime ? mime : 'image/jpeg')
+  }
+  toBlob () {
+    console.log('toBlob')
+  }
+  resize () {
+    console.log('resize')
   }
 }
 
