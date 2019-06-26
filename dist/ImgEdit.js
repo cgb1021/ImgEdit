@@ -9,24 +9,15 @@
    */
   const undefined$1 = void 0;
   const data = {};
-  // input元素监听事件
-  function inputListener (e) {
-    const fileReader = new FileReader();
-    fileReader.onload = (res) => {
-      this.draw(res.target.result);
-    };
-    fileReader.readAsDataURL(e.target.files[0]);
-  }
   /* 
    * 加载图片
    *
    * @param {string} src url/base64
    * @return {object} promise
    */
-  async function loadImg(src) {
+  function loadImg (src) {
     const img = new Image();
     img.crossOrigin = "anonymous";
-
     return new Promise((res, rej) => {
       img.onload = function () {
         res(this);
@@ -39,12 +30,40 @@
     })
   }
   /* 
+   * 图片转base64
+   *
+   * @param {object} file
+   * @return {object} promise
+   */
+  function readFile (file) {
+    const fileReader = new FileReader;
+    return new Promise((res) => {
+      fileReader.onload = (e) => {
+        res(e.target.result);
+      };
+      fileReader.readAsDataURL(file);
+    })
+  }
+  /* 
+   * 画矩形选择框
+   */
+  function drawRect () {
+    drawText('drawRect');
+  }
+  /*
+   * 画文字
+   */
+  function drawText(str, x, y, align = 'left') {
+    console.log(str, x, y, align);
+  }
+  /* 
    * 画图
    *
    * @param {string} base64
    * @param {object} context
    */
   function dwaw (base64, context) {
+    drawRect();
     context.drawImage(base64, 0, 0);
   }
   class ImgEdit {
@@ -87,11 +106,15 @@
       if (typeof hook === 'function')
         data[this].inputListener = (e) => {
           const res = hook(e);
-          if (res === undefined$1 || res)
-            inputListener.bind(this)(e);
+          if (res === undefined$1 || res) {
+            this.draw(e.target.files[0]);
+          }
         };
-      else
-        data[this].inputListener = inputListener.bind(this);
+      else {
+        data[this].inputListener = (e) => {
+          this.draw(e.target.files[0]);
+        };
+      }
       this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el);
       this.input.addEventListener('change', data[this].inputListener);
     }
@@ -101,7 +124,9 @@
     }
     // 图片资源(base64)/图片地址
     async draw (file) {
-      const img = await loadImg(file);
+      const img = await loadImg(typeof file === 'object'
+        ? await readFile(file)
+        : file);
       dwaw(img, this.canvas.getContext('2d'));
     }
   }
