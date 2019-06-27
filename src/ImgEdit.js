@@ -11,8 +11,8 @@
    ry: 0, // 原始坐标系统下的矩形选择框y轴位置
    rw: 0, // 原始坐标系统下的矩形选择框宽度
    rh: 0, // 原始坐标系统下的矩形选择框高度
-   dx: 0, // 原始坐标系统下的画图x轴位置
-   dy: 0 // 原始坐标系统下的画图y轴位置
+   cx: 0, // 原始坐标系统下的画图x轴位置
+   cy: 0 // 原始坐标系统下的画图y轴位置
  }
  const range = {
    rx: 0,
@@ -65,8 +65,8 @@ function moveEvent(e) {
   switch (e.type) {
     case "mousedown":
       eventData.active = true;
-      eventData.offsetX = e.offsetX - eventData.dx;
-      eventData.offsetY = e.offsetY - eventData.dy;
+      eventData.offsetX = e.offsetX - eventData.cx;
+      eventData.offsetY = e.offsetY - eventData.cy;
 
       if (altKey) {
         eventData.rx = e.offsetX;
@@ -82,8 +82,8 @@ function moveEvent(e) {
           eventData.rw = e.offsetX - eventData.rx;
           eventData.rh = e.offsetY - eventData.ry;
         } else {
-          eventData.dx = e.offsetX - eventData.offsetX;
-          eventData.dy = e.offsetY - eventData.offsetY;
+          eventData.cx = e.offsetX - eventData.offsetX;
+          eventData.cy = e.offsetY - eventData.offsetY;
         }
 
         this.draw();
@@ -126,6 +126,38 @@ function moveEvent(e) {
 function stateChange(data, type) {
   typeof data.stateChange === 'function' && data.stateChange(type)
 }
+// 设置对齐
+function align(pos, canvas, data) {
+  let sWidth = data.width * data.ratio * data.viewScale,
+    sHeight = data.height * data.ratio * data.viewScale;
+
+  switch (pos) {
+    case 'top':
+    case 1:
+      eventData.cy = 0;
+      break;
+    case 'right':
+    case 2:
+      eventData.cx = canvas.width - (!data.angle || data.angle === 1 ? sWidth : sHeight);
+      break;
+    case 'bottom':
+    case 3:
+      eventData.cy = canvas.height - (!data.angle || data.angle === 1 ? sHeight : sWidth);
+      break;
+    case 'left':
+    case 4:
+      eventData.cx = 0;
+      break;
+    default:
+      if (!data.angle || data.angle === 1) {
+        eventData.cx = (canvas.width - sWidth) / 2;
+        eventData.cy = (canvas.height - sHeight) / 2;
+      } else {
+        eventData.cx = (canvas.width - sHeight) / 2;
+        eventData.cy = (canvas.height - sWidth) / 2;
+      }
+  }
+}
 /*
  * 画文字
  */
@@ -153,8 +185,8 @@ function drawRect (context, data) {
     ry,
     rw,
     rh,
-    dx,
-    dy
+    cx,
+    cy
   } = eventData;
   if (rw < 0) {
     rx += rw;
@@ -173,7 +205,7 @@ function drawRect (context, data) {
     context.lineWidth = 1;
     context.strokeRect(rx, ry, rw, rh);
 
-    drawText(context, `${Math.floor((rx - dx) * rt)}, ${Math.floor((ry - dy) * rt)}`, rx, ry + fontSize * lineHeight);
+    drawText(context, `${Math.floor((rx - cx) * rt)}, ${Math.floor((ry - cy) * rt)}`, rx, ry + fontSize * lineHeight);
     drawText(context, `${Math.floor(rw * rt)} x ${Math.floor(rh * rt)}`, rx + rw, ry + rh - fontSize * .5, 'right');
   }
 }
@@ -214,7 +246,51 @@ function dwaw (img, canvas, data) {
         canvas.height / data.width
       );
     }
-    context.drawImage(img, 0, 0)
+    if (data.cx === null && data.cy === null) {
+      // 图片居中
+      align('center', canvas, data);
+    }
+    // 坐标转换
+    const sWidth = data.width * data.ratio * data.viewScale,
+      sHeight = data.height * data.ratio * data.viewScale,
+      hWidth = canvas.width * 0.5,
+      hHeight = canvas.height * 0.5;
+    switch (data.angle) {
+      case 0.5: // 顺时针90°
+        data.cx = eventData.cy;
+        data.cy = canvas.width - eventData.cx - sHeight;
+        [range.rx, range.ry, range.rw, range.rh] = [eventData.ry, canvas.width - eventData.rx - eventData.rw, eventData.rh, eventData.rw];
+        break;
+      case 1.5: // 逆时针90°
+        data.cx = canvas.height - eventData.cy - sWidth;
+        data.cy = eventData.cx;
+        [range.rx, range.ry, range.rw, range.rh] = [canvas.height - eventData.ry - eventData.rh, eventData.rx, eventData.rh, eventData.rw];
+        break;
+      case 1: // 180°
+        data.cx = canvas.width - eventData.cx - sWidth;
+        data.cy = canvas.height - eventData.cy - sHeight;
+        [range.rx, range.ry, range.rw, range.rh] = [canvas.width - eventData.rx - eventData.rw, canvas.height - eventData.ry - eventData.rh, eventData.rw, eventData.rh];
+        break;
+      default: // 0°
+        data.cx = eventData.cx;
+        data.cy = eventData.cy;
+        [range.rx, range.ry, range.rw, range.rh] = [eventData.rx, eventData.ry, eventData.rw, eventData.rh];
+    }
+    // 变换坐标轴
+    context.save();
+    if (data.angle) {
+      context.translate(hWidth, hHeight);
+      context.rotate(window.Math.PI * data.angle);
+      if (data.angle !== 1) {
+        context.translate(-hHeight, -hWidth);
+      } else {
+        context.translate(-hWidth, -hHeight);
+      }
+    }
+    // console.log(state.x, state.y, state.width, state.height, cx, cy, sWidth, sHeight);
+    context.drawImage(img, data.x, data.y, data.width, data.height, data.cx, data.cy, sWidth, sHeight);
+    context.restore();
+    /*绘制图片结束*/
     // 画矩形选择框
     if (eventData.rw && eventData.rh) {
       drawRect(context, data)
@@ -225,17 +301,19 @@ function dwaw (img, canvas, data) {
 class ImgEdit {
   constructor (option) {
     data[this] = {
-      x: 0, // 图片上的x轴位置
-      y: 0, // 图片上的y轴位置
+      img: null, // new Image()
       width: 0, // 图片裁剪宽度
       height: 0, // 图片裁剪高度
+      x: 0, // 图片上的x轴位置
+      y: 0, // 图片上的y轴位置
       angle: 0, // 旋转角度
       scale: 1, // 裁剪时的缩放比例(和输出有关系)
-      img: null, // new Image()
       ratio: 1, // 图片和canvas的高宽比例
       viewScale: 1, // 与画布的缩放比例（和显示有关系）
       offsetX: 0, // 坐标变换后事件x轴位置
-      offsetY: 0 // 坐标变换后事件y轴位置
+      offsetY: 0, // 坐标变换后事件y轴位置
+      cx: null, // 坐标变换后画图x轴位置
+      cy: null // 坐标变换后画图y轴位置
     }
     // 获取canvas元素
     if (typeof option === 'object') {
@@ -267,6 +345,20 @@ class ImgEdit {
     this.canvas.addEventListener("mousemove", event, false)
     data[this].moveEvent = event
     this.draw(null, this.canvas)
+  }
+  reset() {
+    const d = data[this]
+    d.x = 0
+    d.y = 0
+    d.angle = 0
+    d.scale = 1
+    d.ratio = 1
+    d.viewScale = 1
+    d.offsetX = 0
+    d.offsetY = 0
+    d.cx = null
+    d.cy = null
+    return this
   }
   destroy () {
     this.unlisten()
@@ -308,6 +400,7 @@ class ImgEdit {
     d.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file))
     d.width = d.img.width
     d.height = d.img.height
+    this.reset()
     return this
   }
   draw () {
