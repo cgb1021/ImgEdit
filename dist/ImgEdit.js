@@ -192,23 +192,26 @@
         color = color === color1 ? color2 : color1;
       }
     }
-    if (!data.angle || data.angle === 1) {
-      data.ratio = Math.min(
-        canvas.width / data.width,
-        canvas.height / data.height
-      );
-    } else {
-      data.ratio = Math.min(
-        canvas.width / data.height,
-        canvas.height / data.width
-      );
+    // 画图片
+    if (img) {
+      if (!data.angle || data.angle === 1) {
+        data.ratio = Math.min(
+          canvas.width / data.width,
+          canvas.height / data.height
+        );
+      } else {
+        data.ratio = Math.min(
+          canvas.width / data.height,
+          canvas.height / data.width
+        );
+      }
+      context.drawImage(img, 0, 0);
+      // 画矩形选择框
+      if (eventData.rw && eventData.rh) {
+        drawRect(context, data);
+        stateChange(data, 'range');
+      }
     }
-    // 画矩形选择框
-    if (eventData.rw && eventData.rh) {
-      drawRect(context, data);
-      stateChange(data, 'range');
-    }
-    context.drawImage(img, 0, 0);
   }
   class ImgEdit {
     constructor (option) {
@@ -220,7 +223,7 @@
         scale: 1, // 缩放比例(和输出有关系)
         angle: 0, // 角度
         ratio: 1,
-        dataURL: ''
+        img: null // new Image()
       };
       // 获取canvas元素
       if (typeof option === 'object') {
@@ -251,6 +254,7 @@
       this.canvas.addEventListener("mouseup", event, false);
       this.canvas.addEventListener("mousemove", event, false);
       data[this].moveEvent = event;
+      this.draw(null, this.canvas);
     }
     destroy () {
       this.unlisten();
@@ -283,25 +287,23 @@
       this.input && this.input.removeEventListener('change', data[this].inputListener);
       return this
     }
-    // 图片资源(base64)/图片地址
-    async draw (file) {
-      let img;
-      if (file) {
-        if (file instanceof HTMLImageElement) {
-          img = file;
-        } else {
-          img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
-        }
-        data[this].width = img.width;
-        data[this].height = img.height;
-      } else if (data[this].dataURL) {
-        img = await loadImg(data[this].dataURL);
-      }
-      dwaw(img, this.canvas, data[this]);
+    /*
+     * @param {string/object} file 图片资源(base64)/图片地址
+     * @return {object} Promise
+     */
+    async open (file) {
+      const d = data[this];
+      d.img = await loadImg(file instanceof HTMLImageElement && file.src ? file.src : (typeof file === 'object' ? await readFile(file) : file));
+      d.width = d.img.width;
+      d.height = d.img.height;
       return this
     }
-    dataURL (base64) {
-      data[this].dataURL = base64;
+    close () {
+      data[this].img = null;
+      return this
+    }
+    draw () {
+      dwaw(data[this].img, this.canvas, data[this]);
       return this
     }
     toDataURL (mime) {
@@ -309,6 +311,12 @@
     }
     toBlob () {
       console.log('toBlob');
+    }
+    width () {
+      return data[this].width
+    }
+    height () {
+      return data[this].height
     }
     resize () {
       console.log('resize');
