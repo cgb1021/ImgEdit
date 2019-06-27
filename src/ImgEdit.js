@@ -103,20 +103,20 @@ function moveEvent(e) {
       eventData.offsetY = e.offsetY;
       switch (state.angle) {
         case .5:
-          offsetX = e.offsetY;
-          offsetY = this.canvas.width - e.offsetX;
+          state.offsetX = e.offsetY;
+          state.offsetY = this.canvas.width - e.offsetX;
           break;
         case 1.5:
-          offsetX = this.canvas.height - e.offsetY;
-          offsetY = e.offsetX;
+          state.offsetX = this.canvas.height - e.offsetY;
+          state.offsetY = e.offsetX;
           break;
         case 1:
-          offsetX = this.canvas.width - e.offsetX;
-          offsetY = this.canvas.height - e.offsetY;
+          state.offsetX = this.canvas.width - e.offsetX;
+          state.offsetY = this.canvas.height - e.offsetY;
           break;
         default:
-          offsetX = e.offsetX;
-          offsetY = e.offsetY;
+          state.offsetX = e.offsetX;
+          state.offsetY = e.offsetY;
       }
 
       this.scale(direct ? 0.1 : -0.1);
@@ -166,7 +166,7 @@ function drawRect (context, data) {
   }
 
   if (rw && rh) {
-    const rt = data.scale / data.ratio / viewScale;
+    const rt = data.scale / data.ratio / data.viewScale;
 
     context.setLineDash([5, 2]);
     context.strokeStyle = "black";
@@ -225,14 +225,17 @@ function dwaw (img, canvas, data) {
 class ImgEdit {
   constructor (option) {
     data[this] = {
-      x: 0, // 图片x轴位置
-      y: 0, // 图片y轴位置
+      x: 0, // 图片上的x轴位置
+      y: 0, // 图片上的y轴位置
       width: 0, // 图片裁剪宽度
       height: 0, // 图片裁剪高度
-      scale: 1, // 缩放比例(和输出有关系)
-      angle: 0, // 角度
-      ratio: 1,
-      img: null // new Image()
+      angle: 0, // 旋转角度
+      scale: 1, // 裁剪时的缩放比例(和输出有关系)
+      img: null, // new Image()
+      ratio: 1, // 图片和canvas的高宽比例
+      viewScale: 1, // 与画布的缩放比例（和显示有关系）
+      offsetX: 0, // 坐标变换后事件x轴位置
+      offsetY: 0 // 坐标变换后事件y轴位置
     }
     // 获取canvas元素
     if (typeof option === 'object') {
@@ -302,13 +305,9 @@ class ImgEdit {
    */
   async open (file) {
     const d = data[this]
-    d.img = await loadImg(file instanceof HTMLImageElement && file.src ? file.src : (typeof file === 'object' ? await readFile(file) : file))
+    d.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file))
     d.width = d.img.width
     d.height = d.img.height
-    return this
-  }
-  close () {
-    data[this].img = null
     return this
   }
   draw () {
