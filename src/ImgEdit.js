@@ -316,18 +316,18 @@ class ImgEdit {
   constructor (option) {
     data[this] = {
       img: null, // new Image()
-      width: 0, // 图片裁剪宽度
-      height: 0, // 图片裁剪高度
+      width: 0, // 图片裁剪范围宽度
+      height: 0, // 图片裁剪范围高度
       x: 0, // 图片上的x轴位置
       y: 0, // 图片上的y轴位置
       angle: 0, // 旋转角度
       scale: 1, // 裁剪时的缩放比例(和输出有关系)
-      ratio: 1, // 图片和canvas的高宽比例
+      ratio: 1, // 图片和画布的高宽比例
       viewScale: 1, // 与画布的缩放比例（和显示有关系）
       offsetX: 0, // 坐标变换后事件x轴位置
       offsetY: 0, // 坐标变换后事件y轴位置
-      cx: null, // 坐标变换后画图x轴位置
-      cy: null // 坐标变换后画图y轴位置
+      cx: null, // 坐标变换后画图x轴位置（画布上）
+      cy: null // 坐标变换后画图y轴位置（画布上）
     }
     // 获取canvas元素
     if (typeof option === 'object') {
@@ -454,4 +454,10 @@ class ImgEdit {
   }
 }
 
+export const resize = () => {
+  console.log('quick resize')
+}
+export const cut = () => {
+  console.log('quick cut')
+}
 export default ImgEdit;
