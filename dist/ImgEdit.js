@@ -28,6 +28,11 @@
    }; // 坐标变换后的矩形选择框数据
    const fontSize = 12;
    const lineHeight = 1.2;
+   let altKey = false; // alt键按下标记
+   window.addEventListener('load', () => {
+     window.addEventListener("keydown", keyEvent, false);
+     window.addEventListener("keyup", keyEvent, false);
+   });
   /* 
    * 加载图片
    *
@@ -72,13 +77,21 @@
         eventData.active = true;
         eventData.offsetX = e.offsetX - eventData.cx;
         eventData.offsetY = e.offsetY - eventData.cy;
+
+        if (altKey) {
+          eventData.rx = e.offsetX;
+          eventData.ry = e.offsetY;
+        }
         break;
       case "mouseup":
         eventData.active = false;
         break;
       case "mousemove":
         if (eventData.active) {
-          {
+          if (altKey) {
+            eventData.rw = e.offsetX - eventData.rx;
+            eventData.rh = e.offsetY - eventData.ry;
+          } else {
             eventData.cx = e.offsetX - eventData.offsetX;
             eventData.cy = e.offsetY - eventData.offsetY;
           }
@@ -117,6 +130,16 @@
         }
 
         this.scale(direct ? 0.1 : -0.1);
+        break;
+    }
+  }
+  function keyEvent(e) {
+    switch (e.type) {
+      case "keydown":
+        altKey = !!e.altKey;
+        break;
+      case "keyup":
+        altKey = false;
         break;
     }
   }
@@ -389,7 +412,8 @@
       return this
     }
     /*
-     * @param {string/object} file 图片资源(base64)/图片地址
+     * 异步打开图片
+     * @param {object/string} file 图片资源(Image/base64/url)
      * @return {object} Promise
      */
     async open (file) {
@@ -410,17 +434,29 @@
     toBlob () {
       console.log('toBlob');
     }
+    // 获取图片宽度
     width () {
       return data[this].width
     }
+    // 获取图片高度
     height () {
       return data[this].height
     }
+    // 视图缩放
+    scale () {
+      console.log('scale');
+    }
+    // 调整大小
     resize () {
       console.log('resize');
     }
-    scale () {
-      console.log('scale');
+    // 裁剪
+    cut () {
+      console.log('cut');
+    }
+    // 旋转
+    rotate () {
+      console.log('rotate');
     }
   }
 
