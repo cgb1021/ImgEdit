@@ -521,7 +521,7 @@
       }
 
       this.draw();
-      stateChange('scale');
+      stateChange(state, 'scale');
 
       return this;
     }
@@ -624,7 +624,7 @@
       state.angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
       align('center', this.canvas, state);
       this.draw();
-      stateChange('rotate');
+      stateChange(state, 'rotate');
 
       return this;
     }
