@@ -42,13 +42,13 @@
   function loadImg (src) {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    return new Promise((res, rej) => {
+    return new Promise((resolve, reject) => {
       img.onload = function () {
-        res(this);
+        resolve(this);
       };
       img.onerror = function (e) {
         console.error('loadImg error', e);
-        rej(e);
+        reject(e);
       };
       img.src = src;
     })
@@ -62,9 +62,7 @@
   function readFile(file) {
     const fileReader = new FileReader;
     return new Promise((res) => {
-      fileReader.onload = (e) => {
-        res(e.target.result);
-      };
+      fileReader.onload = (e) => { res(e.target.result); };
       fileReader.readAsDataURL(file);
     })
   }
@@ -77,7 +75,6 @@
         eventData.active = true;
         eventData.offsetX = e.offsetX - eventData.cx;
         eventData.offsetY = e.offsetY - eventData.cy;
-
         if (altKey) {
           eventData.rx = e.offsetX;
           eventData.ry = e.offsetY;
@@ -95,7 +92,6 @@
             eventData.cx = e.offsetX - eventData.offsetX;
             eventData.cy = e.offsetY - eventData.offsetY;
           }
-
           this.draw();
         }
         break;
@@ -128,7 +124,6 @@
             state.offsetX = e.offsetX;
             state.offsetY = e.offsetY;
         }
-
         this.scale(direct ? 0.1 : -0.1);
         break;
     }
@@ -143,13 +138,13 @@
         break;
     }
   }
-  function stateChange(data, type) {
-    typeof data.stateChange === 'function' && data.stateChange(type);
+  function stateChange(state, type) {
+    typeof state.onChange && state.onChange(type, state);
   }
   // 设置对齐
-  function align(pos, canvas, data) {
-    let sWidth = data.width * data.ratio * data.viewScale,
-      sHeight = data.height * data.ratio * data.viewScale;
+  function align(pos, canvas, state) {
+    let sWidth = state.width * state.ratio * state.viewScale;
+    let sHeight = state.height * state.ratio * state.viewScale;
 
     switch (pos) {
       case 'top':
@@ -158,18 +153,18 @@
         break;
       case 'right':
       case 2:
-        eventData.cx = canvas.width - (!data.angle || data.angle === 1 ? sWidth : sHeight);
+        eventData.cx = canvas.width - (!state.angle || state.angle === 1 ? sWidth : sHeight);
         break;
       case 'bottom':
       case 3:
-        eventData.cy = canvas.height - (!data.angle || data.angle === 1 ? sHeight : sWidth);
+        eventData.cy = canvas.height - (!state.angle || state.angle === 1 ? sHeight : sWidth);
         break;
       case 'left':
       case 4:
         eventData.cx = 0;
         break;
       default:
-        if (!data.angle || data.angle === 1) {
+        if (!state.angle || state.angle === 1) {
           eventData.cx = (canvas.width - sWidth) / 2;
           eventData.cy = (canvas.height - sHeight) / 2;
         } else {
@@ -199,15 +194,8 @@
   /* 
    * 画矩形选择框
    */
-  function drawRect (context, data) {
-    let {
-      rx,
-      ry,
-      rw,
-      rh,
-      cx,
-      cy
-    } = eventData;
+  function drawRect (context, state) {
+    let { rx, ry, rw, rh, cx, cy } = eventData;
     if (rw < 0) {
       rx += rw;
       rw = -rw;
@@ -218,7 +206,7 @@
     }
 
     if (rw && rh) {
-      const rt = data.scale / data.ratio / data.viewScale;
+      const rt = state.scale / state.ratio / state.viewScale;
 
       context.setLineDash([5, 2]);
       context.strokeStyle = "black";
@@ -235,7 +223,7 @@
    * @param {string} img
    * @param {object} canvas
    */
-  function dwaw (img, canvas, data) {
+  function draw (img, canvas, state) {
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
     // 画背景
@@ -255,66 +243,66 @@
     }
     // 画图片
     if (img) {
-      if (!data.angle || data.angle === 1) {
-        data.ratio = Math.min(
-          canvas.width / data.width,
-          canvas.height / data.height
+      if (!state.angle || state.angle === 1) {
+        state.ratio = Math.min(
+          canvas.width / state.width,
+          canvas.height / state.height
         );
       } else {
-        data.ratio = Math.min(
-          canvas.width / data.height,
-          canvas.height / data.width
+        state.ratio = Math.min(
+          canvas.width / state.height,
+          canvas.height / state.width
         );
       }
-      if (data.cx === null && data.cy === null) {
+      if (state.cx === null && state.cy === null) {
         // 图片居中
-        align('center', canvas, data);
+        align('center', canvas, state);
       }
       // 坐标转换
-      const sWidth = data.width * data.ratio * data.viewScale,
-        sHeight = data.height * data.ratio * data.viewScale,
-        hWidth = canvas.width * 0.5,
-        hHeight = canvas.height * 0.5;
-      switch (data.angle) {
+      const sWidth = state.width * state.ratio * state.viewScale;
+      const sHeight = state.height * state.ratio * state.viewScale;
+      const hWidth = canvas.width * 0.5;
+      const hHeight = canvas.height * 0.5;
+      switch (state.angle) {
         case 0.5: // 顺时针90°
-          data.cx = eventData.cy;
-          data.cy = canvas.width - eventData.cx - sHeight;
+          state.cx = eventData.cy;
+          state.cy = canvas.width - eventData.cx - sHeight;
           [range.rx, range.ry, range.rw, range.rh] = [eventData.ry, canvas.width - eventData.rx - eventData.rw, eventData.rh, eventData.rw];
           break;
         case 1.5: // 逆时针90°
-          data.cx = canvas.height - eventData.cy - sWidth;
-          data.cy = eventData.cx;
+          state.cx = canvas.height - eventData.cy - sWidth;
+          state.cy = eventData.cx;
           [range.rx, range.ry, range.rw, range.rh] = [canvas.height - eventData.ry - eventData.rh, eventData.rx, eventData.rh, eventData.rw];
           break;
         case 1: // 180°
-          data.cx = canvas.width - eventData.cx - sWidth;
-          data.cy = canvas.height - eventData.cy - sHeight;
+          state.cx = canvas.width - eventData.cx - sWidth;
+          state.cy = canvas.height - eventData.cy - sHeight;
           [range.rx, range.ry, range.rw, range.rh] = [canvas.width - eventData.rx - eventData.rw, canvas.height - eventData.ry - eventData.rh, eventData.rw, eventData.rh];
           break;
         default: // 0°
-          data.cx = eventData.cx;
-          data.cy = eventData.cy;
+          state.cx = eventData.cx;
+          state.cy = eventData.cy;
           [range.rx, range.ry, range.rw, range.rh] = [eventData.rx, eventData.ry, eventData.rw, eventData.rh];
       }
       // 变换坐标轴
       context.save();
-      if (data.angle) {
+      if (state.angle) {
         context.translate(hWidth, hHeight);
-        context.rotate(window.Math.PI * data.angle);
-        if (data.angle !== 1) {
+        context.rotate(window.Math.PI * state.angle);
+        if (state.angle !== 1) {
           context.translate(-hHeight, -hWidth);
         } else {
           context.translate(-hWidth, -hHeight);
         }
       }
       // console.log(state.x, state.y, state.width, state.height, cx, cy, sWidth, sHeight);
-      context.drawImage(img, data.x, data.y, data.width, data.height, data.cx, data.cy, sWidth, sHeight);
+      context.drawImage(img, state.x, state.y, state.width, state.height, state.cx, state.cy, sWidth, sHeight);
       context.restore();
       /*绘制图片结束*/
       // 画矩形选择框
       if (eventData.rw && eventData.rh) {
-        drawRect(context, data);
-        stateChange(data, 'range');
+        drawRect(context, state);
+        stateChange(state, 'range');
       }
     }
   }
@@ -364,21 +352,21 @@
       this.canvas.addEventListener("mouseup", event, false);
       this.canvas.addEventListener("mousemove", event, false);
       data[this].moveEvent = event;
-      this.draw(null, this.canvas);
+      draw(null, this.canvas);
     }
     reset() {
-      const d = data[this];
-      d.x = 0;
-      d.y = 0;
-      d.angle = 0;
-      d.scale = 1;
-      d.ratio = 1;
-      d.viewScale = 1;
-      d.offsetX = 0;
-      d.offsetY = 0;
-      d.cx = null;
-      d.cy = null;
-      return this
+      const state = data[this];
+      state.x = 0;
+      state.y = 0;
+      state.angle = 0;
+      state.scale = 1;
+      state.ratio = 1;
+      state.viewScale = 1;
+      state.offsetX = 0;
+      state.offsetY = 0;
+      state.cx = null;
+      state.cy = null;
+      return this;
     }
     destroy () {
       this.unlisten();
@@ -394,22 +382,30 @@
         data[this].inputListener = (e) => {
           const res = hook(e);
           if (res === undefined$1 || res) {
-            this.draw(e.target.files[0]);
+            this.open(e.target.files[0]).then(() => {
+              this.draw();
+            });
           }
         };
       else {
         data[this].inputListener = (e) => {
-          this.draw(e.target.files[0]);
+          this.open(e.target.files[0]).then(() => {
+            this.draw();
+          });
         };
       }
       this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el);
       this.input.addEventListener('change', data[this].inputListener);
-      return this
+      return this;
     }
     // 删除输入源监听
     unlisten () {
       this.input && this.input.removeEventListener('change', data[this].inputListener);
-      return this
+      return this;
+    }
+    onChange (fn) {
+      data[this].onChange = typeof fn === 'function' ? fn : null;
+      return this;
     }
     /*
      * 异步打开图片
@@ -417,42 +413,64 @@
      * @return {object} Promise
      */
     async open (file) {
-      const d = data[this];
-      d.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
-      d.width = d.img.width;
-      d.height = d.img.height;
+      const state = data[this];
+      state.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
+      state.width = state.img.width;
+      state.height = state.img.height;
       this.reset();
-      return this
+      return this;
     }
     draw () {
-      dwaw(data[this].img, this.canvas, data[this]);
-      return this
+      draw(data[this].img, this.canvas, data[this]);
+      return this;
     }
     toDataURL (mime) {
-      return this.canvas.toDataURL(mime ? mime : 'image/jpeg')
+      return this.canvas.toDataURL(mime ? mime : 'image/jpeg');
     }
     toBlob () {
       console.log('toBlob');
     }
+    // 清理选择矩形
+    clean () {
+      console.log('clean');
+    }
     // 获取图片宽度
     width () {
-      return data[this].width
+      return data[this].width;
     }
     // 获取图片高度
     height () {
-      return data[this].height
+      return data[this].height;
     }
     // 视图缩放
     scale () {
       console.log('scale');
     }
-    // 调整大小
-    resize () {
-      console.log('resize');
-    }
     // 裁剪
     cut () {
       console.log('cut');
+    }
+    // 调整大小
+    resize (width, height) {
+      const state = data[this];
+      let sWidth = state.width * state.scale;
+      let sHeight = state.height * state.scale;
+      if (state.angle && state.angle !== 1) {
+        [sWidth, sHeight] = [sHeight, sWidth];
+      }
+      if (width >= sWidth && height >= sHeight)
+        return this;
+
+      let scale;
+      if (width && height) {
+        scale = Math.min(width / sWidth, height / sHeight);
+      } else if (width) {
+        scale = width / sWidth;
+      } else {
+        scale = height / sHeight;
+      }
+      state.scale *= scale;
+      return this;
     }
     // 旋转
     rotate () {
