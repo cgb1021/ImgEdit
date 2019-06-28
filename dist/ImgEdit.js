@@ -240,18 +240,20 @@
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
     // 画背景
-    const bgSize = 10;
-    const xs = Math.ceil(canvas.width / bgSize); // 画canvas背景x轴循环次数
-    const ys = Math.ceil(canvas.height / bgSize); // 画canvas背景y轴循环次数
-    const color1 = "#ccc";
-    const color2 = "#eee"; // 画布和图片的比例
-    
-    for (let y = 0; y < ys; ++y) {
-      let color = y % 2 ? color1 : color2;
-      for (let x = 0; x < xs; ++x) {
-        context.fillStyle = color;
-        context.fillRect(x * bgSize, y * bgSize, bgSize, bgSize);
-        color = color === color1 ? color2 : color1;
+    if (state.bg) {
+      const bgSize = 10;
+      const xs = Math.ceil(canvas.width / bgSize); // 画canvas背景x轴循环次数
+      const ys = Math.ceil(canvas.height / bgSize); // 画canvas背景y轴循环次数
+      const color1 = "#ccc";
+      const color2 = "#eee"; // 画布和图片的比例
+
+      for (let y = 0; y < ys; ++y) {
+        let color = y % 2 ? color1 : color2;
+        for (let x = 0; x < xs; ++x) {
+          context.fillStyle = color;
+          context.fillRect(x * bgSize, y * bgSize, bgSize, bgSize);
+          color = color === color1 ? color2 : color1;
+        }
       }
     }
     // 画图片
@@ -340,8 +342,10 @@
           ry: 0,
           rw: 0,
           rh: 0
-        } // 坐标变换后的矩形选择框数据
+        }, // 坐标变换后的矩形选择框数据
+        bg: true
       };
+      const state = data[this];
       // 获取canvas元素
       if (typeof option === 'object') {
         if (option instanceof HTMLCanvasElement)
@@ -353,12 +357,13 @@
               switch (k) {
                 case 'width':
                   this.canvas.width = option.width;
-                  break
+                  break;
                 case 'height':
                   this.canvas.height = option.height;
-                  break
+                  break;
                 case 'input': this.listen(option.input, option.inputListener);
-                  break
+                  break;
+                default: state[k] = option[k];
               }
             }
           }
@@ -370,8 +375,8 @@
       this.canvas.addEventListener("mousedown", event, false);
       this.canvas.addEventListener("mouseup", event, false);
       this.canvas.addEventListener("mousemove", event, false);
-      data[this].moveEvent = event;
-      draw(null, this.canvas);
+      state.moveEvent = event;
+      draw(null, this.canvas, state);
     }
     reset() {
       const state = data[this];
@@ -541,14 +546,6 @@
       stateChange(state, 'cut');
       return this;
     }
-    // 擦除辅助内容
-    eraser () {
-      eventData.rw = eventData.rh = 0;
-      this.draw();
-      stateChange(data[this], 'range');
-
-      return this;
-    }
     // 调整大小
     resize (width, height) {
       const state = data[this];
@@ -597,6 +594,14 @@
 
       return this;
     }
+    // 擦除辅助内容
+    eraser() {
+      eventData.rw = eventData.rh = 0;
+      this.draw();
+      stateChange(data[this], 'range');
+
+      return this;
+    }
   }
   const fetchImg = (url) => {
     return new Promise((resolve) => {
@@ -633,7 +638,10 @@
       img = await fetchImg(img);
     }
     const mime = img.type;
-    const edit = new ImgEdit(document.createElement('canvas'));
+    const edit = new ImgEdit({
+      canvas: document.createElement('canvas'),
+      bg: false
+    });
     return edit.open(img).then(() => {
       const iw = edit.width();
       const ih = edit.height();
@@ -654,6 +662,9 @@
   const cut = () => {
     console.log('quick cut');
   };
+  const rotate = () => {
+    console.log('quick rotate');
+  };
 
   exports.cut = cut;
   exports.default = ImgEdit;
@@ -661,6 +672,7 @@
   exports.loadImg = loadImg;
   exports.readFile = readFile;
   exports.resize = resize;
+  exports.rotate = rotate;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 
