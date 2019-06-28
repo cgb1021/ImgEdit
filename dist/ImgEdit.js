@@ -13,19 +13,13 @@
      active: false, // 点击事件开始标记
      offsetX: 0, // 点击事件开始x轴位置
      offsetY: 0, // 点击事件开始y轴位置
-     rx: 0, // 原始坐标系统下的矩形选择框x轴位置
-     ry: 0, // 原始坐标系统下的矩形选择框y轴位置
+     cx: 0, // 原始坐标系统下在画布x轴位置
+     cy: 0, // 原始坐标系统下在画布y轴位置
+     rx: 0, // 原始坐标系统下的矩形选择框x轴位置（offsetX）
+     ry: 0, // 原始坐标系统下的矩形选择框y轴位置（offsetY）
      rw: 0, // 原始坐标系统下的矩形选择框宽度
-     rh: 0, // 原始坐标系统下的矩形选择框高度
-     cx: 0, // 原始坐标系统下的画图x轴位置
-     cy: 0 // 原始坐标系统下的画图y轴位置
+     rh: 0 // 原始坐标系统下的矩形选择框高度
    };
-   const range = {
-     rx: 0,
-     ry: 0,
-     rw: 0,
-     rh: 0
-   }; // 坐标变换后的矩形选择框数据
    const fontSize = 12;
    const lineHeight = 1.2;
    let altKey = false; // alt键按下标记
@@ -139,10 +133,29 @@
     }
   }
   function stateChange(state, type) {
-    typeof state.onChange && state.onChange(type, state);
+    if (state.onChange) {
+      const { rx, ry, rw, rh, cx, cy } = eventData;
+      let width = Math.floor(state.width * state.scale);
+      let height = Math.floor(state.height * state.scale);
+      let rangeX = 0;
+      let rangeY = 0;
+      let rangeW = 0;
+      let rangeH = 0;
+
+      if (rw && rh) {
+        rangeX = Math.floor((rx - cx) / state.ratio * state.scale / state.viewScale);
+        rangeY = Math.floor((ry - cy) / state.ratio * state.scale / state.viewScale);
+        rangeW = Math.floor(rw / state.ratio * state.scale / state.viewScale);
+        rangeH = Math.floor(rh / state.ratio * state.scale / state.viewScale);
+      }
+      if (state.angle && state.angle !== 1) {
+        [width, height] = [height, width];
+      }
+      state.onChange({ width, height, viewScale: state.viewScale.toFixed(2), range: { x: rangeX, y: rangeY, width: rangeW, height: rangeH }, type });
+    }
   }
   // 设置对齐
-  function align(pos, canvas, state) {
+  function align (pos, canvas, state) {
     let sWidth = state.width * state.ratio * state.viewScale;
     let sHeight = state.height * state.ratio * state.viewScale;
 
@@ -267,22 +280,22 @@
         case 0.5: // 顺时针90°
           state.cx = eventData.cy;
           state.cy = canvas.width - eventData.cx - sHeight;
-          [range.rx, range.ry, range.rw, range.rh] = [eventData.ry, canvas.width - eventData.rx - eventData.rw, eventData.rh, eventData.rw];
+          [state.range.rx, state.range.ry, state.range.rw, state.range.rh] = [eventData.ry, canvas.width - eventData.rx - eventData.rw, eventData.rh, eventData.rw];
           break;
         case 1.5: // 逆时针90°
           state.cx = canvas.height - eventData.cy - sWidth;
           state.cy = eventData.cx;
-          [range.rx, range.ry, range.rw, range.rh] = [canvas.height - eventData.ry - eventData.rh, eventData.rx, eventData.rh, eventData.rw];
+          [state.range.rx, state.range.ry, state.range.rw, state.range.rh] = [canvas.height - eventData.ry - eventData.rh, eventData.rx, eventData.rh, eventData.rw];
           break;
         case 1: // 180°
           state.cx = canvas.width - eventData.cx - sWidth;
           state.cy = canvas.height - eventData.cy - sHeight;
-          [range.rx, range.ry, range.rw, range.rh] = [canvas.width - eventData.rx - eventData.rw, canvas.height - eventData.ry - eventData.rh, eventData.rw, eventData.rh];
+          [state.range.rx, state.range.ry, state.range.rw, state.range.rh] = [canvas.width - eventData.rx - eventData.rw, canvas.height - eventData.ry - eventData.rh, eventData.rw, eventData.rh];
           break;
         default: // 0°
           state.cx = eventData.cx;
           state.cy = eventData.cy;
-          [range.rx, range.ry, range.rw, range.rh] = [eventData.rx, eventData.ry, eventData.rw, eventData.rh];
+          [state.range.rx, state.range.ry, state.range.rw, state.range.rh] = [eventData.rx, eventData.ry, eventData.rw, eventData.rh];
       }
       // 变换坐标轴
       context.save();
@@ -314,14 +327,20 @@
         height: 0, // 图片裁剪范围高度
         x: 0, // 图片上的x轴位置
         y: 0, // 图片上的y轴位置
+        cx: null, // 坐标变换后画图x轴位置（画布上）
+        cy: null, // 坐标变换后画图y轴位置（画布上）
         angle: 0, // 旋转角度
-        scale: 1, // 裁剪时的缩放比例(和输出有关系)
+        scale: 1, // 调整宽高时的缩放比例(和输出有关系)
         ratio: 1, // 图片和画布的高宽比例
         viewScale: 1, // 与画布的缩放比例（和显示有关系）
         offsetX: 0, // 坐标变换后事件x轴位置
         offsetY: 0, // 坐标变换后事件y轴位置
-        cx: null, // 坐标变换后画图x轴位置（画布上）
-        cy: null // 坐标变换后画图y轴位置（画布上）
+        range: {
+          rx: 0,
+          ry: 0,
+          rw: 0,
+          rh: 0
+        } // 坐标变换后的矩形选择框数据
       };
       // 获取canvas元素
       if (typeof option === 'object') {
@@ -432,7 +451,8 @@
     }
     // 清理选择矩形
     clean () {
-      console.log('clean');
+      data[this].viewScale = 1;
+      data[this].cx = data[this].cy = null;
     }
     // 获取图片宽度
     width () {
@@ -443,12 +463,91 @@
       return data[this].height;
     }
     // 视图缩放
-    scale () {
-      console.log('scale');
+    scale (scale) {
+      const state = data[this];
+      const x = state.offsetX - state.cx;
+      const y = state.offsetY - state.cy;
+      const s = state.viewScale + scale;
+
+      // 放大比例不能小于1或大于10
+      if (s < 1 || s > 10) {
+        return this;
+      } else {
+        state.viewScale = s;
+      }
+      // 在图片范围内
+      if (x > 0 && y > 0 && state.offsetX < state.cx + state.width * state.ratio * state.viewScale && state.offsetY < state.cy + state.height * state.ratio * state.viewScale) {
+        eventData.cx -= ((eventData.offsetX - eventData.cx) / (state.viewScale - scale)) * scale;
+        eventData.cy -= ((eventData.offsetY - eventData.cy) / (state.viewScale - scale)) * scale;
+      }
+
+      this.draw();
+      stateChange('scale');
+
+      return this;
     }
     // 裁剪
-    cut () {
-      console.log('cut');
+    cut (rw, rh, rx = 0, ry = 0) {
+      const state = data[this];
+      let x, y, width, height;
+      if (!rw || !rh) {
+        const rt = state.ratio * state.viewScale;
+        const xEnd = state.cx + state.width * rt;
+        const yEnd = state.cy + state.height * rt;
+        ({ rx, ry, rw, rh } = state.range);
+        // console.log(!rw, !rh, rx + rw <= state.cx, ry + rh <= state.cy, rx >= xEnd, ry >= yEnd)
+        // 是否在图片范围内
+        if (!rw || !rh || rx + rw <= state.cx || ry + rh <= state.cy || rx >= xEnd || ry >= yEnd)
+          return this;
+
+        x = state.x + Math.max((rx - state.cx) / rt, 0);
+        y = state.y + Math.max((ry - state.cy) / rt, 0);
+        width = Math.min((Math.min(rx + rw, xEnd) - Math.max(state.cx, rx)) / rt, state.width);
+        height = Math.min((Math.min(ry + rh, yEnd) - Math.max(state.cy, ry)) / rt, state.height);
+      } else {
+        rw = (rw >> 0) / state.scale;
+        rh = (rh >> 0) / state.scale;
+        rx = (rx >> 0) / state.scale;
+        ry = (ry >> 0) / state.scale;
+
+        if (state.angle) {
+          switch (state.angle) {
+            case .5:
+            case 1.5:
+              if (state.angle === .5) {
+                [rx, ry] = [ry, state.height - rx - rw];
+              } else {
+                [rx, ry] = [state.width - ry - rh, rx];
+              }
+
+              [rw, rh] = [rh, rw];
+              break;
+            default:
+              [rx, ry] = [state.width - rw - rx, state.height - rh - ry];
+          }
+        }
+
+        if (rx >= state.width || ry >= state.height)
+          return this;
+
+        x = state.x + Math.max(rx, 0);
+        y = state.y + Math.max(ry, 0);
+        width = Math.min(Math.min(rx + rw, state.width) /*结束点*/ - Math.max(0, rx) /*起点*/ , state.width);
+        height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , state.height);
+      }
+      Object.assign(state, { x, y, width, height });
+      this.clean();
+      this.eraser();
+      stateChange(state, 'cut');
+      return this;
+    }
+    // 擦除辅助内容
+    eraser () {
+      eventData.rw = eventData.rh = 0;
+      this.draw();
+      stateChange(data[this], 'range');
+
+      return this;
     }
     // 调整大小
     resize (width, height) {
@@ -473,8 +572,30 @@
       return this;
     }
     // 旋转
-    rotate () {
-      console.log('rotate');
+    rotate (angle) {
+      const state = data[this];
+      // 角度转换
+      switch (angle) {
+        case -.5:
+        case .5:
+        case -1.5:
+        case 1.5:
+        case 0:
+        case -1:
+        case 1:
+          break;
+        default:
+          if (angle % 90) return this;
+          angle = angle / 90 * .5;
+      }
+
+      angle += state.angle;
+      state.angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
+      align('center', this.canvas, state);
+      this.draw();
+      stateChange('rotate');
+
+      return this;
     }
   }
 
