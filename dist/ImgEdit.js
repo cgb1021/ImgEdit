@@ -598,9 +598,58 @@
       return this;
     }
   }
-
-  const resize = () => {
-    console.log('quick resize');
+  const fetchImg = (url) => {
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.responseType = 'blob';
+      xhr.onload = () => {
+        const file = xhr.response;
+        let name = '';
+        const m = url.match(/[\w.-]+\.(?:jpe?g|png|gif|bmp)$/);
+        if (m) name = m[0];
+        else {
+          name = Date.now();
+          const ext = file.type.split('/')[1];
+          switch (ext) {
+            case 'jpeg':
+              name = `${name}.jpg`;
+              break;
+            default:
+              name = `${name}.${ext}`;
+              break;
+          }
+        }
+        file.name = name;
+        resolve(file);
+      };
+      xhr.open('GET', url);
+      // xhr.overrideMimeType('text/plain; charset=x-user-defined')
+      xhr.send(null);
+    })
+  };
+  const resize = async (img, width, height) => {
+    if (!width && !height) return false;
+    if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
+      img = await fetchImg(img);
+    }
+    const mime = img.type;
+    const edit = new ImgEdit(document.createElement('canvas'));
+    return edit.open(img).then(() => {
+      const iw = edit.width();
+      const ih = edit.height();
+      let ratio = 0;
+      if (width && height) {
+        ratio = Math.min(width / iw, height / ih);
+      } else if (width) {
+        ratio = width / iw;
+      } else {
+        ratio = height / ih;
+      }
+      edit.canvas.width = iw * ratio;
+      edit.canvas.height = ih * ratio;
+      edit.draw();
+      return edit.toDataURL(mime);
+    })
   };
   const cut = () => {
     console.log('quick cut');
@@ -608,6 +657,7 @@
 
   exports.cut = cut;
   exports.default = ImgEdit;
+  exports.fetchImg = fetchImg;
   exports.loadImg = loadImg;
   exports.readFile = readFile;
   exports.resize = resize;
