@@ -65,8 +65,8 @@
         eventData.offsetX = e.offsetX - state.event.cx;
         eventData.offsetY = e.offsetY - state.event.cy;
         if (ctrlKey) {
-          state.event.rx = e.offsetX;
-          state.event.ry = e.offsetY;
+          state.range.x = e.offsetX;
+          state.range.y = e.offsetY;
         }
         break;
       case "mouseup":
@@ -75,8 +75,8 @@
       case "mousemove":
         if (eventData.active) {
           if (ctrlKey) {
-            state.event.rw = e.offsetX - state.event.rx;
-            state.event.rh = e.offsetY - state.event.ry;
+            state.range.width = e.offsetX - state.range.x;
+            state.range.height = e.offsetY - state.range.y;
           } else {
             state.event.cx = e.offsetX - eventData.offsetX;
             state.event.cy = e.offsetY - eventData.offsetY;
@@ -128,7 +128,8 @@
   }
   function stateChange(state, type) {
     if (state.onChange) {
-      const { rx, ry, rw, rh, cx, cy } = state.event;
+      const { cx, cy } = state.event;
+      const { x: rx, y: ry, width: rw, height: rh } = state.range;
       let width = Math.floor(state.width * state.scale);
       let height = Math.floor(state.height * state.scale);
       let rangeX = 0;
@@ -202,7 +203,8 @@
    * 画矩形选择框
    */
   function drawRect (context, state) {
-    let { rx, ry, rw, rh, cx, cy } = state.event;
+    const { cx, cy } = state.event;
+    let { x: rx, y: ry, width: rw, height: rh } = state.range;
     if (rw < 0) {
       rx += rw;
       rw = -rw;
@@ -277,22 +279,18 @@
         case 0.5: // 顺时针90°
           state.cx = state.event.cy;
           state.cy = canvas.width - state.event.cx - sHeight;
-          [state.range.x, state.range.y, state.range.width, state.range.height] = [state.event.ry, canvas.width - state.event.rx - state.event.rw, state.event.rh, state.event.rw];
           break;
         case 1.5: // 逆时针90°
           state.cx = canvas.height - state.event.cy - sWidth;
           state.cy = state.event.cx;
-          [state.range.x, state.range.y, state.range.width, state.range.height] = [canvas.height - state.event.ry - state.event.rh, state.event.rx, state.event.rh, state.event.rw];
           break;
         case 1: // 180°
           state.cx = canvas.width - state.event.cx - sWidth;
           state.cy = canvas.height - state.event.cy - sHeight;
-          [state.range.x, state.range.y, state.range.width, state.range.height] = [canvas.width - state.event.rx - state.event.rw, canvas.height - state.event.ry - state.event.rh, state.event.rw, state.event.rh];
           break;
         default: // 0°
           state.cx = state.event.cx;
           state.cy = state.event.cy;
-          [state.range.x, state.range.y, state.range.width, state.range.height] = [state.event.rx, state.event.ry, state.event.rw, state.event.rh];
       }
       // 变换坐标轴
       context.save();
@@ -310,7 +308,7 @@
       context.restore();
       /*绘制图片结束*/
       // 画矩形选择框
-      if (state.event.rw && state.event.rh) {
+      if (state.range.width && state.range.height) {
         drawRect(context, state);
         stateChange(state, 'range');
       }
@@ -337,10 +335,6 @@
         event: {
           cx: 0, // 原始坐标系统下在画布x轴位置
           cy: 0, // 原始坐标系统下在画布y轴位置
-          rx: 0, // 原始坐标系统下的矩形选择框x轴位置（offsetX）
-          ry: 0, // 原始坐标系统下的矩形选择框y轴位置（offsetY）
-          rw: 0, // 原始坐标系统下的矩形选择框宽度
-          rh: 0 // 原始坐标系统下的矩形选择框高度
         },
         range: {
           x: 0,
@@ -535,7 +529,20 @@
         const rt = state.ratio * state.viewScale;
         const xEnd = state.cx + state.width * rt;
         const yEnd = state.cy + state.height * rt;
-        ({ x: rx, y: ry, width: rw, height: rh } = state.range);
+        const canvas = this.canvas;
+        switch (state.angle) {
+          case 0.5: // 顺时针90°
+            [rx, ry, rw, rh] = [state.range.y, canvas.width - state.range.x - state.range.width, state.range.height, state.range.width];
+            break;
+          case 1.5: // 逆时针90°
+            [rx, ry, rw, rh] = [canvas.height - state.range.y - state.range.height, state.range.x, state.range.height, state.range.width];
+            break;
+          case 1: // 180°
+            [rx, ry, rw, rh] = [canvas.width - state.range.x - state.range.width, canvas.height - state.range.y - state.range.height, state.range.width, state.range.height];
+            break;
+          default: // 0°
+            [rx, ry, rw, rh] = [state.range.x, state.range.y, state.range.width, state.range.height];
+        }
         // console.log(!rw, !rh, rx + rw <= state.cx, ry + rh <= state.cy, rx >= xEnd, ry >= yEnd)
         // 是否在图片范围内
         if (!rw || !rh || rx + rw <= state.cx || ry + rh <= state.cy || rx >= xEnd || ry >= yEnd)
@@ -633,7 +640,7 @@
     // 擦除辅助内容
     eraser() {
       const state = data[this._id];
-      state.event.rw = state.event.rh = 0;
+      state.range.width = state.range.height = 0;
       this.draw();
       stateChange(data[this._id], 'range');
 
