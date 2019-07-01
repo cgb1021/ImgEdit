@@ -22,7 +22,7 @@
    };
    const fontSize = 12;
    const lineHeight = 1.2;
-   let altKey = false; // alt键按下标记
+   let ctrlKey = false; // ctrl键按下标记
    window.addEventListener('load', () => {
      window.addEventListener("keydown", keyEvent, false);
      window.addEventListener("keyup", keyEvent, false);
@@ -69,7 +69,7 @@
         eventData.active = true;
         eventData.offsetX = e.offsetX - eventData.cx;
         eventData.offsetY = e.offsetY - eventData.cy;
-        if (altKey) {
+        if (ctrlKey) {
           eventData.rx = e.offsetX;
           eventData.ry = e.offsetY;
         }
@@ -79,7 +79,7 @@
         break;
       case "mousemove":
         if (eventData.active) {
-          if (altKey) {
+          if (ctrlKey) {
             eventData.rw = e.offsetX - eventData.rx;
             eventData.rh = e.offsetY - eventData.ry;
           } else {
@@ -125,10 +125,10 @@
   function keyEvent(e) {
     switch (e.type) {
       case "keydown":
-        altKey = !!e.altKey;
+        ctrlKey = !!e.ctrlKey;
         break;
       case "keyup":
-        altKey = false;
+        ctrlKey = false;
         break;
     }
   }
