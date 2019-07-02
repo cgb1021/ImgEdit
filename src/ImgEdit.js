@@ -173,10 +173,10 @@ function stateChange(state, type) {
     let rangeH = 0;
 
     if (rw && rh) {
-      rangeX = Math.floor((rx - cx) / state.ratio * state.scale / state.viewScale);
-      rangeY = Math.floor((ry - cy) / state.ratio * state.scale / state.viewScale);
-      rangeW = Math.floor(rw / state.ratio * state.scale / state.viewScale);
-      rangeH = Math.floor(rh / state.ratio * state.scale / state.viewScale);
+      rangeX = Math.floor((rx - cx) / state.scale / state.viewScale);
+      rangeY = Math.floor((ry - cy) / state.scale / state.viewScale);
+      rangeW = Math.floor(rw / state.scale / state.viewScale);
+      rangeH = Math.floor(rh / state.scale / state.viewScale);
     }
     if (state.angle && state.angle !== 1) {
       [width, height] = [height, width];
@@ -186,8 +186,8 @@ function stateChange(state, type) {
 }
 // 设置对齐
 function align (pos, canvas, state) {
-  let sWidth = state.width * state.ratio * state.viewScale;
-  let sHeight = state.height * state.ratio * state.viewScale;
+  let sWidth = state.width * state.viewScale;
+  let sHeight = state.height * state.viewScale;
 
   switch (pos) {
     case 'top':
@@ -250,7 +250,7 @@ function drawRect (context, state) {
   }
 
   if (rw && rh) {
-    const rt = state.scale / state.ratio / state.viewScale;
+    const rt = state.scale / state.viewScale;
 
     context.setLineDash([5, 2]);
     context.strokeStyle = "black";
@@ -290,24 +290,13 @@ function draw (img, canvas, state) {
   }
   // 画图片
   if (img) {
-    if (!state.angle || state.angle === 1) {
-      state.ratio = Math.min(
-        canvas.width / state.width,
-        canvas.height / state.height
-      );
-    } else {
-      state.ratio = Math.min(
-        canvas.width / state.height,
-        canvas.height / state.width
-      );
-    }
     if (state.cx === null && state.cy === null) {
       // 图片居中
       align('center', canvas, state);
     }
     // 坐标转换
-    const sWidth = state.width * state.ratio * state.viewScale;
-    const sHeight = state.height * state.ratio * state.viewScale;
+    const sWidth = state.width * state.viewScale;
+    const sHeight = state.height * state.viewScale;
     const hWidth = canvas.width * 0.5;
     const hHeight = canvas.height * 0.5;
     switch (state.angle) {
@@ -387,10 +376,9 @@ class ImgEdit {
       y: 0, // 图片上的y轴位置
       cx: null, // 坐标变换后画图x轴位置（画布上）
       cy: null, // 坐标变换后画图y轴位置（画布上）
-      angle: 0, // 旋转角度
       scale: 1, // 调整宽高时的缩放比例(和输出有关系)
-      ratio: 1, // 图片和画布的高宽比例
-      viewScale: 1, // 与画布的缩放比例（和显示有关系）
+      angle: 0, // 旋转角度
+      viewScale: 0, // 与画布的缩放比例（和显示有关系）
       offsetX: 0, // 坐标变换后事件x轴位置
       offsetY: 0, // 坐标变换后事件y轴位置
       event: {
@@ -489,12 +477,14 @@ class ImgEdit {
     state.y = 0;
     state.cx = null;
     state.cy = null;
-    state.angle = 0;
     state.scale = 1;
-    state.ratio = 1;
-    state.viewScale = 1;
+    state.angle = 0;
     state.offsetX = 0;
     state.offsetY = 0;
+    state.viewScale = Math.min(1,
+      this.canvas.width / state.width,
+      this.canvas.height / state.height
+    );
     stateChange(state, 'reset');
     return this;
   }
@@ -507,11 +497,6 @@ class ImgEdit {
     stateChange(data[this._id], 'range');
 
     return this;
-  }
-  // 清理选择矩形
-  clean () {
-    data[this._id].viewScale = 1;
-    data[this._id].cx = data[this._id].cy = null;
   }
   close () {
     const state = data[this._id];
@@ -573,13 +558,13 @@ class ImgEdit {
     const s = state.viewScale + scale;
 
     // 放大比例不能小于1或大于10
-    if (s < 1 || s > 10) {
+    if (s < .1 || s > 10) {
       return this;
     } else {
       state.viewScale = s;
     }
     // 在图片范围内
-    if (x > 0 && y > 0 && state.offsetX < state.cx + state.width * state.ratio * state.viewScale && state.offsetY < state.cy + state.height * state.ratio * state.viewScale) {
+    if (x > 0 && y > 0 && state.offsetX < state.cx + state.width * state.viewScale && state.offsetY < state.cy + state.height * state.viewScale) {
       state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
       state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
     }
@@ -595,7 +580,7 @@ class ImgEdit {
     if (!state.img) return this;
     let x, y, width, height;
     if (!rw || !rh) {
-      const rt = state.ratio * state.viewScale;
+      const rt = state.viewScale;
       const xEnd = state.cx + state.width * rt;
       const yEnd = state.cy + state.height * rt;
       const canvas = this.canvas;
@@ -654,8 +639,8 @@ class ImgEdit {
       height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , state.height);
     }
     Object.assign(state, { x, y, width, height });
-    this.clean();
     this.eraser();
+    align('center', this.canvas, state);
     stateChange(state, 'cut');
     return this;
   }
@@ -714,7 +699,7 @@ class ImgEdit {
     const state = data[this._id];
     if (!state.img) return this;
     if (width && height) {
-      const ratio = state.ratio * state.viewScale / state.scale;
+      const ratio = state.viewScale / state.scale;
 
       state.range.width = (width >> 0) * ratio;
       state.range.height = (height >> 0) * ratio;
@@ -725,6 +710,9 @@ class ImgEdit {
       stateChange(state, 'range');
     }
     return this;
+  }
+  align (pos) {
+    align(pos, this.canvas, data[this._id]);
   }
 }
 export const resize = async (img, width, height) => {
