@@ -7,20 +7,59 @@
   /*
    * 图片编辑器
    */
-   const undefined$1 = void 0;
-   const data = {};
-   const eventData = {
-     active: false, // 点击事件开始标记
-     offsetX: 0, // 点击事件开始x轴位置
-     offsetY: 0 // 点击事件开始y轴位置
-   };
-   const fontSize = 12;
-   const lineHeight = 1.2;
-   let ctrlKey = false; // ctrl键按下标记
-   window.addEventListener('load', () => {
-     window.addEventListener("keydown", keyEvent, false);
-     window.addEventListener("keyup", keyEvent, false);
-   });
+  const undefined$1 = void 0;
+  const data = {};
+  const eventData = {
+    active: false, // 点击事件开始标记
+    offsetX: 0, // 点击事件开始x轴位置
+    offsetY: 0 // 点击事件开始y轴位置
+  };
+  const fontSize = 12;
+  const lineHeight = 1.2;
+  let ctrlKey = false; // ctrl键按下标记
+  window.addEventListener('load', () => {
+    window.addEventListener("keydown", keyEvent, false);
+    window.addEventListener("keyup", keyEvent, false);
+  });
+  /* 
+   * 加载线上图片
+   *
+   * @param {string} url
+   * @return {object} promise
+   */
+  const fetchImg = (url) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.responseType = 'blob';
+      xhr.onload = () => {
+        const file = xhr.response;
+        let name = '';
+        const m = url.match(/[\w.-]+\.(?:jpe?g|png|gif|bmp)$/);
+        if (m) name = m[0];
+        else {
+          name = Date.now();
+          const ext = file.type.split('/')[1];
+          switch (ext) {
+            case 'jpeg':
+              name = `${name}.jpg`;
+              break;
+            default:
+              name = `${name}.${ext}`;
+              break;
+          }
+        }
+        file.name = name;
+        resolve(file);
+      };
+      xhr.onerror = (e) => {
+        console.log('fetchImg err', e);
+        reject(e);
+      };
+      xhr.open('GET', url);
+      // xhr.overrideMimeType('text/plain; charset=x-user-defined')
+      xhr.send(null);
+    })
+  };
   /* 
    * 加载图片
    *
@@ -520,6 +559,9 @@
         }
       })
     }
+    img () {
+      return data[this._id].img;
+    }
     // 获取图片宽度
     width () {
       return data[this._id].width;
@@ -644,6 +686,7 @@
         scale = height / sHeight;
       }
       state.scale *= scale;
+      stateChange(state, 'resize');
       return this;
     }
     // 旋转
@@ -690,35 +733,6 @@
       return this;
     }
   }
-  const fetchImg = (url) => {
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-      xhr.responseType = 'blob';
-      xhr.onload = () => {
-        const file = xhr.response;
-        let name = '';
-        const m = url.match(/[\w.-]+\.(?:jpe?g|png|gif|bmp)$/);
-        if (m) name = m[0];
-        else {
-          name = Date.now();
-          const ext = file.type.split('/')[1];
-          switch (ext) {
-            case 'jpeg':
-              name = `${name}.jpg`;
-              break;
-            default:
-              name = `${name}.${ext}`;
-              break;
-          }
-        }
-        file.name = name;
-        resolve(file);
-      };
-      xhr.open('GET', url);
-      // xhr.overrideMimeType('text/plain; charset=x-user-defined')
-      xhr.send(null);
-    })
-  };
   const resize = async (img, width, height) => {
     if (!width && !height) return false;
     if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
