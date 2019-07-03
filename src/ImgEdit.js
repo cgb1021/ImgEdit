@@ -94,7 +94,7 @@ function moveEvent(e) {
   const state = data[this._id];
   if (!state.img) return;
   switch (e.type) {
-    case "mousedown":
+    case 'mousedown':
       eventData.active = true;
       eventData.offsetX = e.offsetX - state.event.cx;
       eventData.offsetY = e.offsetY - state.event.cy;
@@ -103,10 +103,11 @@ function moveEvent(e) {
         state.range.y = e.offsetY;
       }
       break;
-    case "mouseup":
+    case 'mouseout':
+    case 'mouseup':
       eventData.active = false;
       break;
-    case "mousemove":
+    case 'mousemove':
       if (eventData.active) {
         if (ctrlKey) {
           state.range.width = e.offsetX - state.range.x;
@@ -119,7 +120,7 @@ function moveEvent(e) {
         if (ctrlKey) stateChange(state, 'range');
       }
       break;
-    case "mousewheel":
+    case 'mousewheel':
       const direct = e.wheelDelta ?
         e.wheelDelta > 0 ?
         0 :
@@ -148,15 +149,16 @@ function moveEvent(e) {
           state.offsetY = e.offsetY;
       }
       this.scale(direct ? 0.1 : -0.1);
+      state.offsetX = state.offsetY = 0;
       break;
   }
 }
 function keyEvent(e) {
   switch (e.type) {
-    case "keydown":
+    case 'keydown':
       ctrlKey = !!e.ctrlKey;
       break;
-    case "keyup":
+    case 'keyup':
       ctrlKey = false;
       break;
   }
@@ -250,15 +252,15 @@ function drawRect (context, state) {
   }
 
   if (rw && rh) {
-    const rt = state.scale / state.viewScale;
+    const ratio = state.scale / state.viewScale;
 
     context.setLineDash([5, 2]);
     context.strokeStyle = "black";
     context.lineWidth = 1;
     context.strokeRect(rx, ry, rw, rh);
 
-    drawText(context, `${Math.floor((rx - cx) * rt)}, ${Math.floor((ry - cy) * rt)}`, rx, ry + fontSize * lineHeight);
-    drawText(context, `${Math.floor(rw * rt)} x ${Math.floor(rh * rt)}`, rx + rw, ry + rh - fontSize * .5, 'right');
+    drawText(context, `${Math.floor((rx - cx) * ratio)}, ${Math.floor((ry - cy) * ratio)}`, rx, ry + fontSize * lineHeight);
+    drawText(context, `${Math.floor(rw * ratio)} x ${Math.floor(rh * ratio)}`, rx + rw, ry + rh - fontSize * .5, 'right');
   }
 }
 /* 
@@ -371,21 +373,21 @@ class ImgEdit {
       x: 0, // 图片显示范围x轴位置（cut）
       y: 0, // 图片显示范围y轴位置（cut）
       scale: 1, // 调整高宽时和原图比例（resize）
-      angle: 0, // 旋转角度
-      cx: null, // 坐标变换后画图x轴位置（画布上）
-      cy: null, // 坐标变换后画图y轴位置（画布上）
-      viewScale: 0, // 与画布的缩放比例（只和显示有关系）
+      angle: 0, // 旋转角度（rotate）
+      viewScale: 0, // 在画布上的显示比例（scale）
       offsetX: 0, // 坐标变换后事件x轴位置
       offsetY: 0, // 坐标变换后事件y轴位置
+      cx: 0, // 图片在画布上x轴位置（变换后坐标系统）
+      cy: 0, // 图片在画布上y轴位置（变换后坐标系统）
       event: {
-        cx: 0, // 原始坐标系统下在画布x轴位置
-        cy: 0, // 原始坐标系统下在画布y轴位置
+        cx: 0, // 图片在画布上x轴位置（原始坐标系统）
+        cy: 0, // 图片在画布上y轴位置（原始坐标系统）
       },
       range: {
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0
+        x: 0, // 选择范围（setRange）在图片上的x轴位置（原始坐标系统）
+        y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
+        width: 0,  // 选择范围（cut）宽度（原始坐标系统）
+        height: 0  // 选择范围（cut）高度（原始坐标系统）
       }, // 坐标变换后的矩形选择框数据
       bg: true
     };
@@ -418,10 +420,11 @@ class ImgEdit {
       this.canvas = document.querySelector(option);
     if (this.canvas) {
       const event = moveEvent.bind(this);
-      this.canvas.addEventListener("mousewheel", event, false);
-      this.canvas.addEventListener("mousedown", event, false);
-      this.canvas.addEventListener("mouseup", event, false);
-      this.canvas.addEventListener("mousemove", event, false);
+      this.canvas.addEventListener('mousewheel', event, false);
+      this.canvas.addEventListener('mousedown', event, false);
+      this.canvas.addEventListener('mouseup', event, false);
+      this.canvas.addEventListener('mouseout', event, false);
+      this.canvas.addEventListener('mousemove', event, false);
       state.moveEvent = event;
       draw(null, this.canvas, state);
     }
@@ -429,10 +432,11 @@ class ImgEdit {
   destroy () {
     this.unlisten();
     if (this.canvas) {
-      this.canvas.removeEventListener("mousewheel", data[this._id].moveEvent, false);
-      this.canvas.removeEventListener("mousedown", data[this._id].moveEvent, false);
-      this.canvas.removeEventListener("mouseup", data[this._id].moveEvent, false);
-      this.canvas.removeEventListener("mousemove", data[this._id].moveEvent, false);
+      this.canvas.removeEventListener('mousewheel', data[this._id].moveEvent, false);
+      this.canvas.removeEventListener('mousedown', data[this._id].moveEvent, false);
+      this.canvas.removeEventListener('mouseup', data[this._id].moveEvent, false);
+      this.canvas.removeEventListener('mouseout', data[this._id].moveEvent, false);
+      this.canvas.removeEventListener('mousemove', data[this._id].moveEvent, false);
     }
     data[this._id] = data[this._id].moveEvent = data[this._id].onChange = data[this._id].img = this.input = this.canvas = null;
   }
@@ -473,8 +477,8 @@ class ImgEdit {
     state.y = 0;
     state.scale = 1;
     state.angle = 0;
-    state.cx = null;
-    state.cy = null;
+    state.cx = 0;
+    state.cy = 0;
     state.offsetX = 0;
     state.offsetY = 0;
     state.viewScale = Math.min(1,
@@ -550,22 +554,23 @@ class ImgEdit {
   scale (scale) {
     const state = data[this._id];
     if (!state.img) return this;
-    const x = state.offsetX - state.cx;
-    const y = state.offsetY - state.cy;
-    const s = state.viewScale + scale;
-
     // 放大比例不能小于1或大于10
+    const s = state.viewScale + scale;
     if (s < .1 || s > 10) {
       return this;
     } else {
       state.viewScale = s;
     }
-    // 在图片范围内
-    if (x > 0 && y > 0 && state.offsetX < state.cx + state.width * state.viewScale && state.offsetY < state.cy + state.height * state.viewScale) {
-      state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
-      state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
-    }
+    if (state.offsetX || state.offsetY) {
+      const x = state.offsetX - state.cx;
+      const y = state.offsetY - state.cy;
 
+      // 在图片范围内
+      if (x > 0 && y > 0 && state.offsetX < state.cx + state.width * state.viewScale && state.offsetY < state.cy + state.height * state.viewScale) {
+        state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
+        state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
+      }
+    }
     this.draw();
     stateChange(state, 'scale');
 
@@ -577,9 +582,8 @@ class ImgEdit {
     if (!state.img) return this;
     let x, y, width, height;
     if (!rw || !rh) {
-      const rt = state.viewScale;
-      const xEnd = state.cx + state.width * rt;
-      const yEnd = state.cy + state.height * rt;
+      const xEnd = state.cx + state.width * state.viewScale;
+      const yEnd = state.cy + state.height * state.viewScale;
       const canvas = this.canvas;
       switch (state.angle) {
         case 0.5: // 顺时针90°
@@ -599,10 +603,10 @@ class ImgEdit {
       if (!rw || !rh || rx + rw <= state.cx || ry + rh <= state.cy || rx >= xEnd || ry >= yEnd)
         return this;
 
-      x = state.x + Math.max((rx - state.cx) / rt, 0);
-      y = state.y + Math.max((ry - state.cy) / rt, 0);
-      width = Math.min((Math.min(rx + rw, xEnd) - Math.max(state.cx, rx)) / rt, state.width);
-      height = Math.min((Math.min(ry + rh, yEnd) - Math.max(state.cy, ry)) / rt, state.height);
+      x = state.x + Math.max((rx - state.cx) / state.viewScale, 0);
+      y = state.y + Math.max((ry - state.cy) / state.viewScale, 0);
+      width = Math.min((Math.min(rx + rw, xEnd) - Math.max(state.cx, rx)) / state.viewScale, state.width);
+      height = Math.min((Math.min(ry + rh, yEnd) - Math.max(state.cy, ry)) / state.viewScale, state.height);
     } else {
       rw = (rw >> 0) / state.scale;
       rh = (rh >> 0) / state.scale;
