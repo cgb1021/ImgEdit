@@ -212,7 +212,7 @@
       case 4:
         state.event.cx = 0;
         break;
-      default:
+      default: // center
         if (!state.angle || state.angle === 1) {
           state.event.cx = (canvas.width - sWidth) / 2;
           state.event.cy = (canvas.height - sHeight) / 2;
@@ -296,10 +296,6 @@
     }
     // 画图片
     if (img) {
-      if (state.cx === null && state.cy === null) {
-        // 图片居中
-        align('center', canvas, state);
-      }
       // 坐标转换
       const sWidth = state.width * state.viewScale;
       const sHeight = state.height * state.viewScale;
@@ -376,15 +372,15 @@
       this.canvas = null;
       data[this._id] = {
         img: null, // new Image()
-        width: 0, // 图片裁剪范围宽度
-        height: 0, // 图片裁剪范围高度
-        x: 0, // 图片上的x轴位置
-        y: 0, // 图片上的y轴位置
+        width: 0, // 图片显示范围宽度（cut）
+        height: 0, // 图片显示范围高度（cut）
+        x: 0, // 图片显示范围x轴位置（cut）
+        y: 0, // 图片显示范围y轴位置（cut）
+        scale: 1, // 调整高宽时和原图比例（resize）
+        angle: 0, // 旋转角度
         cx: null, // 坐标变换后画图x轴位置（画布上）
         cy: null, // 坐标变换后画图y轴位置（画布上）
-        scale: 1, // 调整宽高时的缩放比例(和输出有关系)
-        angle: 0, // 旋转角度
-        viewScale: 0, // 与画布的缩放比例（和显示有关系）
+        viewScale: 0, // 与画布的缩放比例（只和显示有关系）
         offsetX: 0, // 坐标变换后事件x轴位置
         offsetY: 0, // 坐标变换后事件y轴位置
         event: {
@@ -481,10 +477,10 @@
       const state = data[this._id];
       state.x = 0;
       state.y = 0;
-      state.cx = null;
-      state.cy = null;
       state.scale = 1;
       state.angle = 0;
+      state.cx = null;
+      state.cy = null;
       state.offsetX = 0;
       state.offsetY = 0;
       state.viewScale = Math.min(1,
@@ -521,6 +517,7 @@
       state.height = state.img.height;
       this.reset();
       stateChange(state, 'open');
+      align('center', this.canvas, state);
       return this;
     }
     draw () {
@@ -645,8 +642,9 @@
         height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , state.height);
       }
       Object.assign(state, { x, y, width, height });
+      // TODO: 让图片停留在原点
+      // align('center', this.canvas, state);
       this.eraser();
-      align('center', this.canvas, state);
       stateChange(state, 'cut');
       return this;
     }
@@ -719,6 +717,7 @@
     }
     align (pos) {
       align(pos, this.canvas, data[this._id]);
+      this.draw();
     }
   }
   const resize = async (img, width, height) => {
