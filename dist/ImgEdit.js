@@ -567,15 +567,14 @@
       } else {
         state.viewScale = s;
       }
-      if (state.offsetX || state.offsetY) {
-        const x = state.offsetX - state.cx;
-        const y = state.offsetY - state.cy;
-
-        // 在图片范围内
-        if (x > 0 && y > 0 && state.offsetX < state.cx + state.width * state.viewScale && state.offsetY < state.cy + state.height * state.viewScale) {
-          state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
-          state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
-        }
+      if ((state.offsetX || state.offsetY)
+          && state.offsetX - state.cx > 0
+          && state.offsetY - state.cy > 0
+          && state.offsetX < state.cx + state.width * state.viewScale
+          && state.offsetY < state.cy + state.height * state.viewScale) {
+        // 在图片范围内，以鼠标位置为中心
+        state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
+        state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
       }
       this.draw();
       stateChange(state, 'scale');
@@ -646,7 +645,8 @@
         height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , state.height);
       }
       Object.assign(state, { x, y, width, height });
-      // TODO: 让图片停留在原点
+      // 让图片停留在原点
+      // TODO
       // align('center', this.canvas, state);
       this.eraser();
       stateChange(state, 'cut');
