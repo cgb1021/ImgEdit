@@ -82,8 +82,12 @@ export function loadImg (src) {
  */
 export function readFile(file) {
   const fileReader = new FileReader;
-  return new Promise((res) => {
-    fileReader.onload = (e) => { res(e.target.result) };
+  return new Promise((resolve, reject) => {
+    fileReader.onload = (e) => { resolve(e.target.result) };
+    fileReader.onerror = (e) => {
+      console.error('readFile error', e);
+      reject(e);
+    }
     fileReader.readAsDataURL(file);
   })
 }
@@ -515,7 +519,12 @@ class ImgEdit {
    */
   async open (file) {
     const state = data[this._id];
-    state.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
+    try {
+      state.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
+    } catch(e) {
+      stateChange(state, 'error');
+      return this;
+    }
     state._width = state.img.width;
     state._height = state.img.height;
     this.reset(1);
@@ -538,7 +547,7 @@ class ImgEdit {
     const state = data[this._id];
     return new Promise((resolve) => {
       if (!state.img) {
-        resolve('');
+        resolve(0);
       } else {
         save(state, 'toBlob', (res) => {
           resolve(res)
