@@ -700,24 +700,21 @@ class ImgEdit {
   rotate (angle) {
     const state = data[this._id]
     if (!state.img) return this;
-    // 角度转换
-    switch (angle) {
-      case -.5:
-      case .5:
-      case -1.5:
-      case 1.5:
-      case 0:
-      case -1:
-      case 1:
-        break;
-      default:
-        if (angle % 90) return this;
-        angle = angle / 90 * .5;
-    }
+    // 90,180,270转.5,1,1.5
+    if (angle > 2) angle = angle / 90 * .5;
 
     angle += state.angle;
-    state.angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
-    align('center', this.canvas, state);
+    angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
+    // 只接受0,.5,1,1.5
+    if (angle % .5) return this;
+    state.angle = angle;
+    if (state.angle === .5 || state.angle === 1.5) {
+      state.event.cx -= (state.height - state.width) * .5 * state.viewScale;
+      state.event.cy -= (state.width - state.height) * .5 * state.viewScale;
+    } else {
+      state.event.cx -= (state.width - state.height) * .5 * state.viewScale;
+      state.event.cy -= (state.height - state.width) * .5 * state.viewScale;
+    }
     this.draw();
     stateChange(state, 'rotate');
 
