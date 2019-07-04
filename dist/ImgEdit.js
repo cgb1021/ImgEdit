@@ -587,6 +587,7 @@
       if (!state.img) return this;
       let x, y, width, height;
       if (!rw || !rh) {
+        // 以画布坐标为参考
         const xEnd = state.cx + state.width * state.viewScale;
         const yEnd = state.cy + state.height * state.viewScale;
         const canvas = this.canvas;
@@ -613,6 +614,7 @@
         width = Math.min((Math.min(rx + rw, xEnd) - Math.max(state.cx, rx)) / state.viewScale, state.width);
         height = Math.min((Math.min(ry + rh, yEnd) - Math.max(state.cy, ry)) / state.viewScale, state.height);
       } else {
+        // 以图片坐标为参考
         rw = (rw >> 0) / state.scale;
         rh = (rh >> 0) / state.scale;
         rx = (rx >> 0) / state.scale;
@@ -633,7 +635,6 @@
             [rx, ry] = [state.width - rw - rx, state.height - rh - ry];
             break;
           default:
-
         }
 
         if (rx >= state.width || ry >= state.height)
@@ -644,10 +645,25 @@
         width = Math.min(Math.min(rx + rw, state.width) /*结束点*/ - Math.max(0, rx) /*起点*/ , state.width);
         height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , state.height);
       }
-      Object.assign(state, { x, y, width, height });
       // 让图片停留在原点
-      // TODO
-      // align('center', this.canvas, state);
+      switch (state.angle) {
+        case .5:
+          state.event.cx += (state.height + state.y - height - y) * state.viewScale;
+          state.event.cy += (x - state.x) * state.viewScale;
+          break;
+        case 1:
+          state.event.cx += (state.width + state.x - width - x) * state.viewScale;
+          state.event.cy += (state.height + state.y - height - y) * state.viewScale;
+          break;
+        case 1.5:
+          state.event.cx += (y - state.y) * state.viewScale;
+          state.event.cy += (state.width + state.x - width - x) * state.viewScale;
+          break;
+        default:
+          state.event.cx += (x - state.x) * state.viewScale;
+          state.event.cy += (y - state.y) * state.viewScale;
+      }
+      Object.assign(state, { x, y, width, height });
       this.eraser();
       stateChange(state, 'cut');
       return this;
