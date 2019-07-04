@@ -122,7 +122,7 @@
             state.event.cx = e.offsetX - eventData.offsetX;
             state.event.cy = e.offsetY - eventData.offsetY;
           }
-          this.draw();
+          draw(this.canvas, data[this._id], data[this._id].img);
           if (ctrlKey) stateChange(state, 'range');
         }
         break;
@@ -275,7 +275,7 @@
    * @param {string} img
    * @param {object} canvas
    */
-  function draw (img, canvas, state) {
+  function draw (canvas, state, img) {
     if (!canvas) return;
     const context = canvas.getContext('2d');
     context.clearRect(0, 0, canvas.width, canvas.height);
@@ -374,6 +374,8 @@
       this.canvas = null;
       data[this._id] = {
         img: null, // new Image()
+        _width: 0, // 图片原始宽度
+        _height: 0, // 图片原始高度
         width: 0, // 图片显示范围宽度（cut）
         height: 0, // 图片显示范围高度（cut）
         x: 0, // 图片显示范围x轴位置（cut）
@@ -432,7 +434,7 @@
         this.canvas.addEventListener('mouseout', event, false);
         this.canvas.addEventListener('mousemove', event, false);
         state.moveEvent = event;
-        draw(null, this.canvas, state);
+        draw(this.canvas, state);
       }
     }
     destroy () {
@@ -452,16 +454,12 @@
         data[this._id].inputListener = (e) => {
           const res = hook(e);
           if (res === undefined$1 || res) {
-            this.open(e.target.files[0]).then(() => {
-              this.draw();
-            });
+            this.open(e.target.files[0]);
           }
         };
       else {
         data[this._id].inputListener = (e) => {
-          this.open(e.target.files[0]).then(() => {
-            this.draw();
-          });
+          this.open(e.target.files[0]);
         };
       }
       this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el);
@@ -477,8 +475,10 @@
       data[this._id].onChange = typeof fn === 'function' ? fn : null;
       return this;
     }
-    reset () {
+    reset (noDraw) {
       const state = data[this._id];
+      state.width = state._width;
+      state.height = state._height;
       state.x = 0;
       state.y = 0;
       state.scale = 1;
@@ -491,23 +491,28 @@
         this.canvas.width / state.width,
         this.canvas.height / state.height
       );
-      stateChange(state, 'reset');
+      align('center', this.canvas, state);
+      if (!noDraw) {
+        draw(this.canvas, data[this._id], data[this._id].img);
+        stateChange(state, 'reset');
+      }
       return this;
     }
     // 擦除辅助内容
-    eraser() {
+    clean(noDraw) {
       const state = data[this._id];
       if (!state.img) return this;
       state.range.width = state.range.height = 0;
-      this.draw();
-      stateChange(data[this._id], 'range');
-
+      if (!noDraw) {
+        draw(this.canvas, data[this._id], data[this._id].img);
+        stateChange(data[this._id], 'clean');
+      }
       return this;
     }
     close () {
       const state = data[this._id];
       state.img = null;
-      return this.reset();
+      return this.reset(1);
     }
     /*
      * 异步打开图片
@@ -517,15 +522,16 @@
     async open (file) {
       const state = data[this._id];
       state.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
-      state.width = state.img.width;
-      state.height = state.img.height;
-      this.reset();
+      state._width = state.img.width;
+      state._height = state.img.height;
+      this.reset(1);
+      draw(this.canvas, data[this._id], data[this._id].img);
       stateChange(state, 'open');
-      align('center', this.canvas, state);
       return this;
     }
     draw () {
-      draw(data[this._id].img, this.canvas, data[this._id]);
+      draw(this.canvas, data[this._id], data[this._id].img);
+      stateChange(data[this._id], 'draw');
       return this;
     }
     toDataURL (mime, quality) {
@@ -586,7 +592,7 @@
           state.event.cy -= state.height * scale * .5;
         }
       }
-      this.draw();
+      draw(this.canvas, data[this._id], data[this._id].img);
       stateChange(state, 'scale');
 
       return this;
@@ -674,7 +680,8 @@
           state.event.cy += (y - state.y) * state.viewScale;
       }
       Object.assign(state, { x, y, width, height });
-      this.eraser();
+      this.clean(1);
+      draw(this.canvas, data[this._id], data[this._id].img);
       stateChange(state, 'cut');
       return this;
     }
@@ -721,7 +728,7 @@
         state.event.cx -= (state.width - state.height) * .5 * state.viewScale;
         state.event.cy -= (state.height - state.width) * .5 * state.viewScale;
       }
-      this.draw();
+      draw(this.canvas, data[this._id], data[this._id].img);
       stateChange(state, 'rotate');
 
       return this;
@@ -737,14 +744,15 @@
         state.range.x = (x >> 0) * ratio + state.event.cx;
         state.range.y = (y >> 0) * ratio + state.event.cy;
 
-        this.draw();
+        draw(this.canvas, data[this._id], data[this._id].img);
         stateChange(state, 'range');
       }
       return this;
     }
     align (pos) {
       align(pos, this.canvas, data[this._id]);
-      this.draw();
+      draw(this.canvas, data[this._id], data[this._id].img);
+      stateChange(state, 'align');
     }
   }
   const resize = async (img, width, height) => {
