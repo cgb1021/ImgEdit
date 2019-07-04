@@ -561,11 +561,11 @@
       const state = data[this._id];
       if (!state.img) return this;
       // 放大比例不能小于1或大于10
-      const s = state.viewScale + scale;
-      if (s < .1 || s > 10) {
+      const viewScale = state.viewScale + scale;
+      if (viewScale < .1 || viewScale > 10) {
         return this;
       } else {
-        state.viewScale = s;
+        state.viewScale = viewScale;
       }
       if ((state.offsetX || state.offsetY)
           && state.offsetX - state.cx > 0
@@ -575,6 +575,10 @@
         // 在图片范围内，以鼠标位置为中心
         state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
         state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
+      } else {
+        // 以图片在画布范围内中心点
+        state.event.cx -= state.width * scale * .5;
+        state.event.cy -= state.height * scale * .5;
       }
       this.draw();
       stateChange(state, 'scale');
