@@ -555,24 +555,30 @@ class ImgEdit {
     const state = data[this._id];
     if (!state.img) return this;
     // 放大比例不能小于1或大于10
-    const viewScale = state.viewScale + scale;
-    if (viewScale < .1 || viewScale > 10) {
+    const viewScale = state.viewScale;
+    const s = viewScale + scale;
+    if (s < .1 || s > 10) {
       return this;
     } else {
-      state.viewScale = viewScale;
+      state.viewScale = s;
     }
     if ((state.offsetX || state.offsetY)
         && state.offsetX - state.cx > 0
         && state.offsetY - state.cy > 0
-        && state.offsetX < state.cx + state.width * state.viewScale
-        && state.offsetY < state.cy + state.height * state.viewScale) {
+        && state.offsetX < state.cx + state.width * viewScale
+        && state.offsetY < state.cy + state.height * viewScale) {
       // 在图片范围内，以鼠标位置为中心
-      state.event.cx -= ((eventData.offsetX - state.event.cx) / (state.viewScale - scale)) * scale;
-      state.event.cy -= ((eventData.offsetY - state.event.cy) / (state.viewScale - scale)) * scale;
+      state.event.cx -= ((eventData.offsetX - state.event.cx) / viewScale) * scale;
+      state.event.cy -= ((eventData.offsetY - state.event.cy) / viewScale) * scale;
     } else {
       // 以图片在画布范围内中心点
-      state.event.cx -= state.width * scale * .5;
-      state.event.cy -= state.height * scale * .5;
+      if (state.angle === .5 || state.angle === 1.5) {
+        state.event.cx -= state.height * scale * .5;
+        state.event.cy -= state.width * scale * .5;
+      } else {
+        state.event.cx -= state.width * scale * .5;
+        state.event.cy -= state.height * scale * .5;
+      }
     }
     this.draw();
     stateChange(state, 'scale');
