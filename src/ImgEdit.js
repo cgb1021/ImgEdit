@@ -116,7 +116,7 @@ function moveEvent(e) {
           state.event.cx = e.offsetX - eventData.offsetX;
           state.event.cy = e.offsetY - eventData.offsetY;
         }
-        draw(this.canvas, data[this._id], data[this._id].img);
+        draw(this.canvas, state, state.img);
         if (ctrlKey) stateChange(state, 'range');
       }
       break;
@@ -487,7 +487,7 @@ class ImgEdit {
     );
     align('center', this.canvas, state);
     if (!noDraw) {
-      draw(this.canvas, data[this._id], data[this._id].img);
+      draw(this.canvas, state, state.img);
       stateChange(state, 'reset');
     }
     return this;
@@ -498,8 +498,8 @@ class ImgEdit {
     if (!state.img) return this;
     state.range.width = state.range.height = 0;
     if (!noDraw) {
-      draw(this.canvas, data[this._id], data[this._id].img);
-      stateChange(data[this._id], 'clean');
+      draw(this.canvas, state, state.img);
+      stateChange(state, 'clean');
     }
     return this;
   }
@@ -519,13 +519,14 @@ class ImgEdit {
     state._width = state.img.width;
     state._height = state.img.height;
     this.reset(1);
-    draw(this.canvas, data[this._id], data[this._id].img);
+    draw(this.canvas, state, state.img);
     stateChange(state, 'open');
     return this;
   }
   draw () {
-    draw(this.canvas, data[this._id], data[this._id].img);
-    stateChange(data[this._id], 'draw');
+    const state = data[this._id];
+    draw(this.canvas, state, state.img);
+    stateChange(state, 'draw');
     return this;
   }
   toDataURL (mime, quality) {
@@ -586,7 +587,7 @@ class ImgEdit {
         state.event.cy -= state.height * scale * .5;
       }
     }
-    draw(this.canvas, data[this._id], data[this._id].img);
+    draw(this.canvas, state, state.img);
     stateChange(state, 'scale');
 
     return this;
@@ -675,7 +676,7 @@ class ImgEdit {
     }
     Object.assign(state, { x, y, width, height });
     this.clean(1);
-    draw(this.canvas, data[this._id], data[this._id].img);
+    draw(this.canvas, state, state.img);
     stateChange(state, 'cut');
     return this;
   }
@@ -722,7 +723,7 @@ class ImgEdit {
       state.event.cx -= (state.width - state.height) * .5 * state.viewScale;
       state.event.cy -= (state.height - state.width) * .5 * state.viewScale;
     }
-    draw(this.canvas, data[this._id], data[this._id].img);
+    draw(this.canvas, state, state.img);
     stateChange(state, 'rotate');
 
     return this;
@@ -738,14 +739,15 @@ class ImgEdit {
       state.range.x = (x >> 0) * ratio + state.event.cx;
       state.range.y = (y >> 0) * ratio + state.event.cy;
 
-      draw(this.canvas, data[this._id], data[this._id].img);
+      draw(this.canvas, state, state.img);
       stateChange(state, 'range');
     }
     return this;
   }
   align (pos) {
-    align(pos, this.canvas, data[this._id]);
-    draw(this.canvas, data[this._id], data[this._id].img);
+    const state = data[this._id];
+    align(pos, this.canvas, state);
+    draw(this.canvas, state, state.img);
     stateChange(state, 'align');
   }
 }
