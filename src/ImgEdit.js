@@ -267,7 +267,7 @@ function drawRect (context, state) {
  * @param {object} canvas
  */
 function draw (canvas, state, img) {
-  if (!canvas) return;
+  // if (!canvas) return;
   const context = canvas.getContext('2d');
   context.clearRect(0, 0, canvas.width, canvas.height);
   // 画背景
@@ -291,8 +291,6 @@ function draw (canvas, state, img) {
     // 坐标转换
     const sWidth = state.width * state.viewScale;
     const sHeight = state.height * state.viewScale;
-    const hWidth = canvas.width * 0.5;
-    const hHeight = canvas.height * 0.5;
     switch (state.angle) {
       case 0.5: // 顺时针90°
         state.cx = state.event.cy;
@@ -313,6 +311,8 @@ function draw (canvas, state, img) {
     // 变换坐标轴
     context.save();
     if (state.angle) {
+      const hWidth = canvas.width * 0.5;
+      const hHeight = canvas.height * 0.5;
       context.translate(hWidth, hHeight);
       context.rotate(window.Math.PI * state.angle);
       if (state.angle !== 1) {
@@ -481,18 +481,18 @@ class ImgEdit {
     );
     align('center', this.canvas, state);
     if (!noDraw) {
-      draw(this.canvas, state, this.img);
+      this.canvas && draw(this.canvas, state, this.img);
       stateChange(state, 'reset');
     }
     return this;
   }
   // 擦除辅助内容
-  clean(noDraw) {
+  clean (noDraw) {
     const state = data[this._id];
     if (!this.img) return this;
     state.range.width = state.range.height = 0;
     if (!noDraw) {
-      draw(this.canvas, state, this.img);
+      this.canvas && draw(this.canvas, state, this.img);
       stateChange(state, 'clean');
     }
     return this;
@@ -533,7 +533,7 @@ class ImgEdit {
   }
   draw () {
     const state = data[this._id];
-    draw(this.canvas, state, this.img);
+    this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'draw');
     return this;
   }
@@ -582,7 +582,7 @@ class ImgEdit {
         state.event.cy -= state.height * scale * .5;
       }
     }
-    draw(this.canvas, state, this.img);
+    this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'scale');
     return this;
   }
@@ -665,7 +665,7 @@ class ImgEdit {
     }
     Object.assign(state, { x, y, width, height });
     this.clean(1);
-    draw(this.canvas, state, this.img);
+    this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'cut');
     return this;
   }
@@ -710,7 +710,7 @@ class ImgEdit {
       state.event.cx -= (state.width - state.height) * .5 * state.viewScale;
       state.event.cy -= (state.height - state.width) * .5 * state.viewScale;
     }
-    draw(this.canvas, state, this.img);
+    this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'rotate');
     return this;
   }
@@ -723,7 +723,7 @@ class ImgEdit {
       state.range.height = (height >> 0) * ratio;
       state.range.x = (x >> 0) * ratio + state.event.cx;
       state.range.y = (y >> 0) * ratio + state.event.cy;
-      draw(this.canvas, state, this.img);
+      this.canvas && draw(this.canvas, state, this.img);
       stateChange(state, 'range');
     }
     return this;
@@ -732,7 +732,7 @@ class ImgEdit {
     if (!this.img) return this;
     const state = data[this._id];
     align(pos, this.canvas, state);
-    draw(this.canvas, state, this.img);
+    this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'align');
     return this;
   }
@@ -745,8 +745,7 @@ export const resize = async (img, width, height) => {
   const mime = img.type;
   const edit = new ImgEdit();
   return edit.open(img).then(() => {
-    edit.resize(width, height);
-    const b64 = edit.toDataURL(mime);
+    const b64 = edit.resize(width, height).toDataURL(mime);
     edit.destroy();
     return b64;
   });
@@ -759,8 +758,7 @@ export const cut = async (img, width, height, x, y) => {
   const mime = img.type;
   const edit = new ImgEdit();
   return edit.open(img).then(() => {
-    edit.cut(width, height, x, y);
-    const b64 = edit.toDataURL(mime);
+    const b64 = edit.cut(width, height, x, y).toDataURL(mime);
     edit.destroy();
     return b64;
   });
@@ -773,8 +771,7 @@ export const rotate = async (img, deg) => {
   const mime = img.type;
   const edit = new ImgEdit();
   return edit.open(img).then(() => {
-    edit.rotate(deg);
-    const b64 = edit.toDataURL(mime);
+    const b64 = edit.rotate(deg).toDataURL(mime);
     edit.destroy();
     return b64;
   });
