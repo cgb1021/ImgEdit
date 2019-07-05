@@ -42,16 +42,16 @@ export const fetchImg = (url) => {
             break;
         }
       }
-      file.name = name
-      resolve(file)
+      file.name = name;
+      resolve(file);
     }
     xhr.onerror = (e) => {
-      console.log('fetchImg err', e)
-      reject(e)
+      console.log('fetchImg err', e);
+      reject(e);
     }
-    xhr.open('GET', url)
+    xhr.open('GET', url);
     // xhr.overrideMimeType('text/plain; charset=x-user-defined')
-    xhr.send(null)
+    xhr.send(null);
   })
 }
 /* 
@@ -83,7 +83,7 @@ export function loadImg (src) {
 export function readFile(file) {
   const fileReader = new FileReader;
   return new Promise((resolve, reject) => {
-    fileReader.onload = (e) => { resolve(e.target.result) };
+    fileReader.onload = (e) => { resolve(e.target.result) }
     fileReader.onerror = (e) => {
       console.error('readFile error', e);
       reject(e);
@@ -132,7 +132,6 @@ function moveEvent(e) {
         e.detail > 0 ?
         0 :
         1; // 0 上(缩小，scale变小) 1 下(放大，scale变大)
-
       eventData.offsetX = e.offsetX;
       eventData.offsetY = e.offsetY;
       switch (state.angle) {
@@ -177,7 +176,6 @@ function stateChange(state, type) {
     let rangeY = 0;
     let rangeW = 0;
     let rangeH = 0;
-
     if (rw && rh) {
       rangeX = Math.floor((rx - cx) / state.scale / state.viewScale);
       rangeY = Math.floor((ry - cy) / state.scale / state.viewScale);
@@ -194,7 +192,6 @@ function stateChange(state, type) {
 function align (pos, canvas, state) {
   let sWidth = state.width * state.viewScale;
   let sHeight = state.height * state.viewScale;
-
   switch (pos) {
     case 'top':
     case 1:
@@ -231,7 +228,6 @@ function drawText (context, str, x, y, align = 'left') {
   const m = context.measureText(str);
   context.fillStyle = "rgba(255,255,255,.5)";
   context.fillRect(align !== 'right' ? x : x - m.width - padding * 2, y - fontSize * lineHeight, m.width + padding * 2 - 1, fontSize * lineHeight * 1.5 - 1);
-
   context.fillStyle = "#000";
   context.textAlign = align;
   context.fillText(
@@ -254,15 +250,12 @@ function drawRect (context, state) {
     ry += rh;
     rh = -rh;
   }
-
   if (rw && rh) {
     const ratio = state.scale / state.viewScale;
-
     context.setLineDash([5, 2]);
     context.strokeStyle = "black";
     context.lineWidth = 1;
     context.strokeRect(rx, ry, rw, rh);
-
     drawText(context, `${Math.floor((rx - cx) * ratio)}, ${Math.floor((ry - cy) * ratio)}`, rx, ry + fontSize * lineHeight);
     drawText(context, `${Math.floor(rw * ratio)} x ${Math.floor(rh * ratio)}`, rx + rw, ry + rh - fontSize * .5, 'right');
   }
@@ -284,7 +277,6 @@ function draw (canvas, state, img) {
     const ys = Math.ceil(canvas.height / bgSize); // 画canvas背景y轴循环次数
     const color1 = "#ccc";
     const color2 = "#eee"; // 画布和图片的比例
-
     for (let y = 0; y < ys; ++y) {
       let color = y % 2 ? color1 : color2;
       for (let x = 0; x < xs; ++x) {
@@ -592,7 +584,6 @@ class ImgEdit {
     }
     draw(this.canvas, state, this.img);
     stateChange(state, 'scale');
-
     return this;
   }
   // 裁剪
@@ -622,7 +613,6 @@ class ImgEdit {
       // 是否在图片范围内
       if (!rw || !rh || rx + rw <= state.cx || ry + rh <= state.cy || rx >= xEnd || ry >= yEnd)
         return this;
-
       x = state.x + Math.max((rx - state.cx) / state.viewScale, 0);
       y = state.y + Math.max((ry - state.cy) / state.viewScale, 0);
       width = Math.min((Math.min(rx + rw, xEnd) - Math.max(state.cx, rx)) / state.viewScale, state.width);
@@ -633,7 +623,6 @@ class ImgEdit {
       rh = (rh >> 0) / state.scale;
       rx = (rx >> 0) / state.scale;
       ry = (ry >> 0) / state.scale;
-
       switch (state.angle) {
         case .5:
         case 1.5:
@@ -642,7 +631,6 @@ class ImgEdit {
           } else {
             [rx, ry] = [state.width - ry - rh, rx];
           }
-
           [rw, rh] = [rh, rw];
           break;
         case 1:
@@ -650,10 +638,8 @@ class ImgEdit {
           break;
         default:;
       }
-
       if (rx >= state.width || ry >= state.height)
         return this;
-
       x = state.x + Math.max(rx, 0);
       y = state.y + Math.max(ry, 0);
       width = Math.min(Math.min(rx + rw, state.width) /*结束点*/ - Math.max(0, rx) /*起点*/ , state.width);
@@ -694,7 +680,6 @@ class ImgEdit {
     }
     if (width >= sWidth && height >= sHeight)
       return this;
-
     let scale;
     if (width && height) {
       scale = Math.min(width / sWidth, height / sHeight);
@@ -710,10 +695,9 @@ class ImgEdit {
   // 旋转
   rotate (angle) {
     if (!this.img) return this;
-    const state = data[this._id]
+    const state = data[this._id];
     // 90,180,270转.5,1,1.5
     if (angle > 2 || angle < -2) angle = angle / 90 * .5;
-
     angle += state.angle;
     angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
     // 只接受0,.5,1,1.5
@@ -735,12 +719,10 @@ class ImgEdit {
     const state = data[this._id];
     if (width && height) {
       const ratio = state.viewScale / state.scale;
-
       state.range.width = (width >> 0) * ratio;
       state.range.height = (height >> 0) * ratio;
       state.range.x = (x >> 0) * ratio + state.event.cx;
       state.range.y = (y >> 0) * ratio + state.event.cy;
-
       draw(this.canvas, state, this.img);
       stateChange(state, 'range');
     }
@@ -767,7 +749,7 @@ export const resize = async (img, width, height) => {
     const b64 = edit.toDataURL(mime);
     edit.destroy();
     return b64;
-  })
+  });
 }
 export const cut = async (img, width, height, x, y) => {
   if (!width && !height) return false;
@@ -781,7 +763,7 @@ export const cut = async (img, width, height, x, y) => {
     const b64 = edit.toDataURL(mime);
     edit.destroy();
     return b64;
-  })
+  });
 }
 export const rotate = async (img, deg) => {
   if (!deg) return false;
@@ -795,6 +777,6 @@ export const rotate = async (img, deg) => {
     const b64 = edit.toDataURL(mime);
     edit.destroy();
     return b64;
-  })
+  });
 }
 export default ImgEdit;
