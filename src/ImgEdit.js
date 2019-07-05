@@ -96,7 +96,7 @@ function moveEvent(e) {
   e.preventDefault();
   e.stopPropagation();
   const state = data[this._id];
-  if (!state.img) return;
+  if (!this.img) return;
   switch (e.type) {
     case 'mousedown':
       eventData.active = true;
@@ -120,7 +120,7 @@ function moveEvent(e) {
           state.event.cx = e.offsetX - eventData.offsetX;
           state.event.cy = e.offsetY - eventData.offsetY;
         }
-        draw(this.canvas, state, state.img);
+        draw(this.canvas, state, this.img);
         if (ctrlKey) stateChange(state, 'range');
       }
       break;
@@ -339,7 +339,7 @@ function draw (canvas, state, img) {
     }
   }
 }
-function save (state, method, ...args) {
+function save (img, state, method, ...args) {
   const canvas = document.createElement("canvas");
   if (typeof canvas[method] !== 'function') return false;
   const ctx = canvas.getContext("2d");
@@ -363,17 +363,15 @@ function save (state, method, ...args) {
         ctx.translate(-canvas.width, -canvas.height);
     }
   }
-  ctx.drawImage(state.img, Math.floor(x), Math.floor(y), Math.floor(width), Math.floor(height), 0, 0, dWidth, dHeight);
+  ctx.drawImage(img, Math.floor(x), Math.floor(y), Math.floor(width), Math.floor(height), 0, 0, dWidth, dHeight);
   return canvas[method](...args);
 }
 class ImgEdit {
   constructor (option) {
     this._id = Symbol();
     this.canvas = null;
+    this.img = null, // new Image()
     data[this._id] = {
-      img: null, // new Image()
-      _width: 0, // 图片原始宽度
-      _height: 0, // 图片原始高度
       width: 0, // 图片显示范围宽度（cut）
       height: 0, // 图片显示范围高度（cut）
       x: 0, // 图片显示范围x轴位置（cut）
@@ -422,7 +420,7 @@ class ImgEdit {
           }
         }
       }
-    } else
+    } else if (option)
       this.canvas = document.querySelector(option);
     if (this.canvas) {
       const event = moveEvent.bind(this);
@@ -444,7 +442,7 @@ class ImgEdit {
       this.canvas.removeEventListener('mouseout', data[this._id].moveEvent, false);
       this.canvas.removeEventListener('mousemove', data[this._id].moveEvent, false);
     }
-    data[this._id] = data[this._id].moveEvent = data[this._id].onChange = data[this._id].img = this.input = this.canvas = null;
+    this.img = data[this._id] = data[this._id].moveEvent = data[this._id].onChange = this.input = this.canvas = null;
   }
   // 监听输入源(<input type=file>)变化
   listen (el, hook) {
@@ -475,8 +473,8 @@ class ImgEdit {
   }
   reset (noDraw) {
     const state = data[this._id];
-    state.width = state._width;
-    state.height = state._height;
+    state.width = this.img.width;
+    state.height = this.img.height;
     state.x = 0;
     state.y = 0;
     state.scale = 1;
@@ -491,7 +489,7 @@ class ImgEdit {
     );
     align('center', this.canvas, state);
     if (!noDraw) {
-      draw(this.canvas, state, state.img);
+      draw(this.canvas, state, this.img);
       stateChange(state, 'reset');
     }
     return this;
@@ -499,18 +497,25 @@ class ImgEdit {
   // 擦除辅助内容
   clean(noDraw) {
     const state = data[this._id];
-    if (!state.img) return this;
+    if (!this.img) return this;
     state.range.width = state.range.height = 0;
     if (!noDraw) {
-      draw(this.canvas, state, state.img);
+      draw(this.canvas, state, this.img);
       stateChange(state, 'clean');
     }
     return this;
   }
   close () {
-    const state = data[this._id];
-    state.img = null;
+    this.img = null;
     return this.reset(1);
+  }
+  // 获取图片宽度
+  width() {
+    return data[this._id].width;
+  }
+  // 获取图片高度
+  height() {
+    return data[this._id].height;
   }
   /*
    * 异步打开图片
@@ -520,56 +525,45 @@ class ImgEdit {
   async open (file) {
     const state = data[this._id];
     try {
-      state.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
+      this.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
     } catch(e) {
       stateChange(state, 'error');
       return this;
     }
-    state._width = state.img.width;
-    state._height = state.img.height;
-    this.reset(1);
-    draw(this.canvas, state, state.img);
+    state.width = this.img.width;
+    state.height = this.img.height;
+    if (this.canvas) {
+      this.reset(1);
+      draw(this.canvas, state, this.img);
+    }
     stateChange(state, 'open');
     return this;
   }
   draw () {
     const state = data[this._id];
-    draw(this.canvas, state, state.img);
+    draw(this.canvas, state, this.img);
     stateChange(state, 'draw');
     return this;
   }
   toDataURL (mime, quality) {
-    const state = data[this._id];
-    if (!state.img) return '';
-    return save(state, 'toDataURL', mime, quality);
+    if (!this.img) return '';
+    return save(this.img, data[this._id], 'toDataURL', mime, quality);
   }
   toBlob (mime, quality) {
-    const state = data[this._id];
     return new Promise((resolve) => {
-      if (!state.img) {
+      if (!this.img) {
         resolve(0);
       } else {
-        save(state, 'toBlob', (res) => {
+        save(this.img, data[this._id], 'toBlob', (res) => {
           resolve(res)
         }, mime, quality);
       }
     })
   }
-  img () {
-    return data[this._id].img;
-  }
-  // 获取图片宽度
-  width () {
-    return data[this._id].width;
-  }
-  // 获取图片高度
-  height () {
-    return data[this._id].height;
-  }
   // 视图缩放
   scale (scale) {
+    if (!this.img) return this;
     const state = data[this._id];
-    if (!state.img) return this;
     // 放大比例不能小于1或大于10
     const viewScale = state.viewScale;
     const s = viewScale + scale;
@@ -596,15 +590,15 @@ class ImgEdit {
         state.event.cy -= state.height * scale * .5;
       }
     }
-    draw(this.canvas, state, state.img);
+    draw(this.canvas, state, this.img);
     stateChange(state, 'scale');
 
     return this;
   }
   // 裁剪
   cut (rw, rh, rx = 0, ry = 0) {
+    if (!this.img) return this;
     const state = data[this._id];
-    if (!state.img) return this;
     let x, y, width, height;
     if (!rw || !rh) {
       // 以画布坐标为参考
@@ -685,14 +679,14 @@ class ImgEdit {
     }
     Object.assign(state, { x, y, width, height });
     this.clean(1);
-    draw(this.canvas, state, state.img);
+    draw(this.canvas, state, this.img);
     stateChange(state, 'cut');
     return this;
   }
   // 调整大小
   resize (width, height) {
+    if (!this.img) return this;
     const state = data[this._id];
-    if (!state.img) return this;
     let sWidth = state.width * state.scale;
     let sHeight = state.height * state.scale;
     if (state.angle && state.angle !== 1) {
@@ -715,8 +709,8 @@ class ImgEdit {
   }
   // 旋转
   rotate (angle) {
+    if (!this.img) return this;
     const state = data[this._id]
-    if (!state.img) return this;
     // 90,180,270转.5,1,1.5
     if (angle > 2) angle = angle / 90 * .5;
 
@@ -732,14 +726,13 @@ class ImgEdit {
       state.event.cx -= (state.width - state.height) * .5 * state.viewScale;
       state.event.cy -= (state.height - state.width) * .5 * state.viewScale;
     }
-    draw(this.canvas, state, state.img);
+    draw(this.canvas, state, this.img);
     stateChange(state, 'rotate');
-
     return this;
   }
   setRange (width, height, x = 0, y = 0) {
+    if (!this.img) return this;
     const state = data[this._id];
-    if (!state.img) return this;
     if (width && height) {
       const ratio = state.viewScale / state.scale;
 
@@ -748,16 +741,18 @@ class ImgEdit {
       state.range.x = (x >> 0) * ratio + state.event.cx;
       state.range.y = (y >> 0) * ratio + state.event.cy;
 
-      draw(this.canvas, state, state.img);
+      draw(this.canvas, state, this.img);
       stateChange(state, 'range');
     }
     return this;
   }
   align (pos) {
+    if (!this.img) return this;
     const state = data[this._id];
     align(pos, this.canvas, state);
-    draw(this.canvas, state, state.img);
+    draw(this.canvas, state, this.img);
     stateChange(state, 'align');
+    return this;
   }
 }
 export const resize = async (img, width, height) => {
