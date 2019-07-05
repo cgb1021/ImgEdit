@@ -712,7 +712,7 @@ class ImgEdit {
     if (!this.img) return this;
     const state = data[this._id]
     // 90,180,270转.5,1,1.5
-    if (angle > 2) angle = angle / 90 * .5;
+    if (angle > 2 || angle < -2) angle = angle / 90 * .5;
 
     angle += state.angle;
     angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
@@ -769,10 +769,32 @@ export const resize = async (img, width, height) => {
     return b64;
   })
 }
-export const cut = () => {
-  console.log('quick cut')
+export const cut = async (img, width, height, x, y) => {
+  if (!width && !height) return false;
+  if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
+    img = await fetchImg(img);
+  }
+  const mime = img.type;
+  const edit = new ImgEdit();
+  return edit.open(img).then(() => {
+    edit.cut(width, height, x, y);
+    const b64 = edit.toDataURL(mime);
+    edit.destroy();
+    return b64;
+  })
 }
-export const rotate = () => {
-  console.log('quick rotate')
+export const rotate = async (img, deg) => {
+  if (!deg) return false;
+  if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
+    img = await fetchImg(img);
+  }
+  const mime = img.type;
+  const edit = new ImgEdit();
+  return edit.open(img).then(() => {
+    edit.rotate(deg);
+    const b64 = edit.toDataURL(mime);
+    edit.destroy();
+    return b64;
+  })
 }
 export default ImgEdit;
