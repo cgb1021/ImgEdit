@@ -106,11 +106,12 @@
     switch (e.type) {
       case 'mousedown':
         eventData.active = true;
-        eventData.offsetX = e.offsetX - state.event.cx;
-        eventData.offsetY = e.offsetY - state.event.cy;
-        if (ctrlKey) {
-          state.range.x = e.offsetX;
-          state.range.y = e.offsetY;
+        if (!ctrlKey) {
+          eventData.offsetX = e.offsetX - state.event.cx;
+          eventData.offsetY = e.offsetY - state.event.cy;
+        } else {
+          eventData.offsetX = e.offsetX;
+          eventData.offsetY = e.offsetY;
         }
         break;
       case 'mouseout':
@@ -120,14 +121,28 @@
       case 'mousemove':
         if (eventData.active) {
           if (ctrlKey) {
-            state.range.width = e.offsetX - state.range.x;
-            state.range.height = e.offsetY - state.range.y;
+            const ratio = state.scale / state.viewScale;
+            const { cx, cy } = state.event;
+            let iw = state.width / ratio;
+            let ih = state.height / ratio;
+            if (state.angle === .5 || state.angle === 1.5) {
+              [ iw, ih ] = [ ih, iw ];
+            }
+            let x = Math.max(cx, Math.min(e.offsetX, eventData.offsetX));
+            let y = Math.max(cy, Math.min(e.offsetY, eventData.offsetY));
+            let width = Math.min(cx + iw, Math.max(e.offsetX, eventData.offsetX)) - x;
+            let height = Math.min(cy + ih, Math.max(e.offsetY, eventData.offsetY)) - y;
+            if (x + width > cx && y + height > cy && x < cx + iw && y < cy + ih) {
+              x -= cx;
+              y -= cy;
+              Object.assign(state.range, { width: (width * ratio) >> 0, height: (height * ratio) >> 0, x: (x * ratio) >> 0, y: (y * ratio) >> 0 });
+              stateChange(state, 'range');
+            }
           } else {
             state.event.cx = e.offsetX - eventData.offsetX;
             state.event.cy = e.offsetY - eventData.offsetY;
           }
           draw(this.canvas, state, this.img);
-          if (ctrlKey) stateChange(state, 'range');
         }
         break;
       case 'mousewheel':
@@ -164,11 +179,9 @@
   }
   function keyEvent(e) {
     switch (e.type) {
-      case 'keydown':
-        ctrlKey = !!e.ctrlKey;
-        break;
       case 'keyup':
-        ctrlKey = false;
+      case 'keydown':
+        ctrlKey = e.ctrlKey;
         break;
     }
   }
@@ -176,22 +189,19 @@
     if (state.onChange) {
       const { cx, cy } = state.event;
       const { x: rx, y: ry, width: rw, height: rh } = state.range;
-      let width = Math.floor(state.width * state.scale);
-      let height = Math.floor(state.height * state.scale);
+      let width = (state.width * state.scale) >> 0;
+      let height = (state.height * state.scale) >> 0;
       let rangeX = 0;
       let rangeY = 0;
-      let rangeW = 0;
-      let rangeH = 0;
       if (rw && rh) {
-        rangeX = Math.floor((rx - cx) / state.scale / state.viewScale);
-        rangeY = Math.floor((ry - cy) / state.scale / state.viewScale);
-        rangeW = Math.floor(rw / state.scale / state.viewScale);
-        rangeH = Math.floor(rh / state.scale / state.viewScale);
+        const ratio = state.viewScale / state.scale;
+        rangeX = (rx - cx * ratio) >> 0;
+        rangeY = (ry - cy * ratio) >> 0;
       }
       if (state.angle && state.angle !== 1) {
         [width, height] = [height, width];
       }
-      state.onChange({ width, height, viewScale: state.viewScale.toFixed(2), range: { x: rangeX, y: rangeY, width: rangeW, height: rangeH }, type });
+      state.onChange({ width, height, viewScale: state.viewScale.toFixed(2), range: { x: rangeX, y: rangeY, width: rw, height: rh }, type });
     }
   }
   // 设置对齐
@@ -257,13 +267,13 @@
       rh = -rh;
     }
     if (rw && rh) {
-      const ratio = state.scale / state.viewScale;
+      const ratio = state.viewScale / state.scale;
       context.setLineDash([5, 2]);
       context.strokeStyle = "black";
       context.lineWidth = 1;
-      context.strokeRect(rx, ry, rw, rh);
-      drawText(context, `${Math.floor((rx - cx) * ratio)}, ${Math.floor((ry - cy) * ratio)}`, rx, ry + fontSize * lineHeight);
-      drawText(context, `${Math.floor(rw * ratio)} x ${Math.floor(rh * ratio)}`, rx + rw, ry + rh - fontSize * .5, 'right');
+      context.strokeRect(cx + rx * ratio, cy + ry * ratio, rw * ratio, rh * ratio);
+      drawText(context, `${rx}, ${ry}`, cx + rx * ratio, cy + ry * ratio + fontSize * lineHeight);
+      drawText(context, `${rw} x ${rh}`, cx + (rx + rw) * ratio, cy + (ry + rh) * ratio - fontSize * .5, 'right');
     }
   }
   /* 
@@ -390,7 +400,7 @@
           y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
           width: 0,  // 选择范围（cut）宽度（原始坐标系统）
           height: 0  // 选择范围（cut）高度（原始坐标系统）
-        }, // 坐标变换后的矩形选择框数据
+        }, // 矩形选择框数据（左上角为原点）
         bg: true
       };
       const state = data[this._id];
@@ -596,61 +606,42 @@
     cut (rw, rh, rx = 0, ry = 0) {
       if (!this.img) return this;
       const state = data[this._id];
-      let x, y, width, height;
       if (!rw || !rh) {
-        // 以画布坐标为参考
-        const xEnd = state.cx + state.width * state.viewScale;
-        const yEnd = state.cy + state.height * state.viewScale;
-        const canvas = this.canvas;
-        switch (state.angle) {
-          case 0.5: // 顺时针90°
-            [rx, ry, rw, rh] = [state.range.y, canvas.width - state.range.x - state.range.width, state.range.height, state.range.width];
-            break;
-          case 1.5: // 逆时针90°
-            [rx, ry, rw, rh] = [canvas.height - state.range.y - state.range.height, state.range.x, state.range.height, state.range.width];
-            break;
-          case 1: // 180°
-            [rx, ry, rw, rh] = [canvas.width - state.range.x - state.range.width, canvas.height - state.range.y - state.range.height, state.range.width, state.range.height];
-            break;
-          default: // 0°
-            [rx, ry, rw, rh] = [state.range.x, state.range.y, state.range.width, state.range.height];
-        }
-        // console.log(!rw, !rh, rx + rw <= state.cx, ry + rh <= state.cy, rx >= xEnd, ry >= yEnd)
-        // 是否在图片范围内
-        if (!rw || !rh || rx + rw <= state.cx || ry + rh <= state.cy || rx >= xEnd || ry >= yEnd)
-          return this;
-        x = state.x + Math.max((rx - state.cx) / state.viewScale, 0);
-        y = state.y + Math.max((ry - state.cy) / state.viewScale, 0);
-        width = Math.min((Math.min(rx + rw, xEnd) - Math.max(state.cx, rx)) / state.viewScale, state.width);
-        height = Math.min((Math.min(ry + rh, yEnd) - Math.max(state.cy, ry)) / state.viewScale, state.height);
+        ({ x: rx, y: ry, width: rw, height: rh } = state.range);
       } else {
         // 以图片坐标为参考
-        rw = (rw >> 0) / state.scale;
-        rh = (rh >> 0) / state.scale;
-        rx = (rx >> 0) / state.scale;
-        ry = (ry >> 0) / state.scale;
-        switch (state.angle) {
-          case .5:
-          case 1.5:
-            if (state.angle === .5) {
-              [rx, ry] = [ry, state.height - rx - rw];
-            } else {
-              [rx, ry] = [state.width - ry - rh, rx];
-            }
-            [rw, rh] = [rh, rw];
-            break;
-          case 1:
-            [rx, ry] = [state.width - rw - rx, state.height - rh - ry];
-            break;
-          default:
-        }
-        if (rx >= state.width || ry >= state.height)
-          return this;
-        x = state.x + Math.max(rx, 0);
-        y = state.y + Math.max(ry, 0);
-        width = Math.min(Math.min(rx + rw, state.width) /*结束点*/ - Math.max(0, rx) /*起点*/ , state.width);
-        height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , state.height);
+        rw = rw >> 0;
+        rh = rh >> 0;
+        rx = rx >> 0;
+        ry = ry >> 0;
       }
+      if (!rw || !rh) return this;
+      rw = rw / state.scale;
+      rh = rh / state.scale;
+      rx = rx / state.scale;
+      ry = ry / state.scale;
+      switch (state.angle) {
+        case .5:
+        case 1.5:
+          if (state.angle === .5) {
+            [rx, ry] = [ry, state.height - rx - rw];
+          } else {
+            [rx, ry] = [state.width - ry - rh, rx];
+          }
+          [rw, rh] = [rh, rw];
+          break;
+        case 1:
+          [rx, ry] = [state.width - rw - rx, state.height - rh - ry];
+          break;
+        default:
+      }
+      if (rx >= state.width || ry >= state.height)
+        return this;
+      let x, y, width, height;
+      x = state.x + Math.max(rx, 0);
+      y = state.y + Math.max(ry, 0);
+      width = Math.min(Math.min(rx + rw, state.width) /*结束点*/ - Math.max(0, rx) /*起点*/, state.width);
+      height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/, state.height);
       // 让图片停留在原点
       switch (state.angle) {
         case .5:
@@ -722,13 +713,9 @@
     }
     setRange (width, height, x = 0, y = 0) {
       if (!this.img) return this;
-      const state = data[this._id];
-      if (width && height) {
-        const ratio = state.viewScale / state.scale;
-        state.range.width = (width >> 0) * ratio;
-        state.range.height = (height >> 0) * ratio;
-        state.range.x = (x >> 0) * ratio + state.event.cx;
-        state.range.y = (y >> 0) * ratio + state.event.cy;
+      if (width && height && width > 0 && height > 0 && x >= 0 && y >= 0) {
+        const state = data[this._id];
+        Object.assign(state.range, { width, height, x, y });
         this.canvas && draw(this.canvas, state, this.img);
         stateChange(state, 'range');
       }
