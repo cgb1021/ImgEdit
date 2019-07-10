@@ -335,7 +335,7 @@ function draw (canvas, state, img) {
 }
 function save (img, state, method, ...args) {
   const canvas = document.createElement("canvas");
-  if (typeof canvas[method] !== 'function') return false;
+  // if (typeof canvas[method] !== 'function') return false;
   const ctx = canvas.getContext("2d");
   const { x, y, width, height } = state;
   const dWidth = canvas.width = Math.floor(width * state.scale);
