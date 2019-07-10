@@ -187,21 +187,13 @@
   }
   function stateChange(state, type) {
     if (state.onChange) {
-      const { cx, cy } = state.event;
-      const { x: rx, y: ry, width: rw, height: rh } = state.range;
+      const range = Object.assign({}, state.range);
       let width = (state.width * state.scale) >> 0;
       let height = (state.height * state.scale) >> 0;
-      let rangeX = 0;
-      let rangeY = 0;
-      if (rw && rh) {
-        const ratio = state.viewScale / state.scale;
-        rangeX = (rx - cx * ratio) >> 0;
-        rangeY = (ry - cy * ratio) >> 0;
-      }
       if (state.angle && state.angle !== 1) {
         [width, height] = [height, width];
       }
-      state.onChange({ width, height, viewScale: state.viewScale.toFixed(2), range: { x: rangeX, y: rangeY, width: rw, height: rh }, type });
+      state.onChange({ width, height, viewScale: state.viewScale.toFixed(2), range, type });
     }
   }
   // 设置对齐
@@ -713,6 +705,10 @@
     }
     setRange (width, height, x = 0, y = 0) {
       if (!this.img) return this;
+      width >>= 0;
+      height >>= 0;
+      x >>= 0;
+      y >>= 0;
       if (width && height && width > 0 && height > 0 && x >= 0 && y >= 0) {
         const state = data[this._id];
         Object.assign(state.range, { width, height, x, y });
