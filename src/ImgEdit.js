@@ -129,6 +129,7 @@ function moveEvent(e) {
           if (x + width > cx && y + height > cy && x < cx + iw && y < cy + ih) {
             x -= cx;
             y -= cy;
+            // 裁剪只和原图有关，不用*scale
             Object.assign(state.range, { width: (width / state.viewScale) >> 0, height: (height / state.viewScale) >> 0, x: (x / state.viewScale) >> 0, y: (y / state.viewScale) >> 0 });
             stateChange(state, 'range');
           }
@@ -192,8 +193,8 @@ function stateChange(state, type) {
 }
 // 设置对齐
 function align (pos, canvas, state) {
-  let sWidth = state.width * state.viewScale;
-  let sHeight = state.height * state.viewScale;
+  let sWidth = state.width * state.viewScale * state.scale;
+  let sHeight = state.height * state.viewScale * state.scale;
   switch (pos) {
     case 'top':
     case 1:
@@ -674,6 +675,7 @@ class ImgEdit {
     } else {
       scale = height / sHeight;
     }
+    // 确保scale和viewScale成比例
     state.scale *= scale;
     state.viewScale /= scale;
     if (state.range.width) {
@@ -697,12 +699,16 @@ class ImgEdit {
     // 只接受0,.5,1,1.5
     if (angle % .5) return this;
     state.angle = angle;
+    const ratio = state.viewScale * state.scale * .5;
     if (state.angle === .5 || state.angle === 1.5) {
-      state.event.cx -= (state.height - state.width) * .5 * state.viewScale;
-      state.event.cy -= (state.width - state.height) * .5 * state.viewScale;
+      state.event.cx -= (state.height - state.width) * ratio;
+      state.event.cy -= (state.width - state.height) * ratio;
     } else {
-      state.event.cx -= (state.width - state.height) * .5 * state.viewScale;
-      state.event.cy -= (state.height - state.width) * .5 * state.viewScale;
+      state.event.cx -= (state.width - state.height) * ratio;
+      state.event.cy -= (state.height - state.width) * ratio;
+    }
+    if (state.range.width) {
+      console.log('TODO');
     }
     this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'rotate');
