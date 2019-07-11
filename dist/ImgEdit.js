@@ -121,10 +121,10 @@
       case 'mousemove':
         if (eventData.active) {
           if (ctrlKey) {
-            const ratio = state.scale / state.viewScale;
+            const ratio = state.viewScale * state.scale;
             const { cx, cy } = state.event;
-            let iw = state.width / ratio;
-            let ih = state.height / ratio;
+            let iw = state.width * ratio;
+            let ih = state.height * ratio;
             if (state.angle === .5 || state.angle === 1.5) {
               [ iw, ih ] = [ ih, iw ];
             }
@@ -135,7 +135,7 @@
             if (x + width > cx && y + height > cy && x < cx + iw && y < cy + ih) {
               x -= cx;
               y -= cy;
-              Object.assign(state.range, { width: (width * ratio) >> 0, height: (height * ratio) >> 0, x: (x * ratio) >> 0, y: (y * ratio) >> 0 });
+              Object.assign(state.range, { width: (width / state.viewScale) >> 0, height: (height / state.viewScale) >> 0, x: (x / state.viewScale) >> 0, y: (y / state.viewScale) >> 0 });
               stateChange(state, 'range');
             }
           } else {
@@ -259,7 +259,7 @@
       rh = -rh;
     }
     if (rw && rh) {
-      const ratio = state.viewScale / state.scale;
+      const ratio = state.viewScale;
       context.setLineDash([5, 2]);
       context.strokeStyle = "black";
       context.lineWidth = 1;
@@ -297,8 +297,9 @@
     // 画图片
     if (img) {
       // 坐标转换
-      const sWidth = state.width * state.viewScale;
-      const sHeight = state.height * state.viewScale;
+      const ratio = state.viewScale * state.scale;
+      const sWidth = state.width * ratio;
+      const sHeight = state.height * ratio;
       switch (state.angle) {
         case 0.5: // 顺时针90°
           state.cx = state.event.cy;
@@ -635,23 +636,24 @@
       y = state.y + Math.max(ry, 0);
       width = Math.min(Math.min(rx + rw, state.width) /*结束点*/ - Math.max(0, rx) /*起点*/, state.width);
       height = Math.min(Math.min(ry + rh, state.height) /*结束点*/ - Math.max(0, ry) /*起点*/, state.height);
+      const ratio = state.viewScale * state.scale;
       // 让图片停留在原点
       switch (state.angle) {
         case .5:
-          state.event.cx += (state.height + state.y - height - y) * state.viewScale;
-          state.event.cy += (x - state.x) * state.viewScale;
+          state.event.cx += (state.height + state.y - height - y) * ratio;
+          state.event.cy += (x - state.x) * ratio;
           break;
         case 1:
-          state.event.cx += (state.width + state.x - width - x) * state.viewScale;
-          state.event.cy += (state.height + state.y - height - y) * state.viewScale;
+          state.event.cx += (state.width + state.x - width - x) * ratio;
+          state.event.cy += (state.height + state.y - height - y) * ratio;
           break;
         case 1.5:
-          state.event.cx += (y - state.y) * state.viewScale;
-          state.event.cy += (state.width + state.x - width - x) * state.viewScale;
+          state.event.cx += (y - state.y) * ratio;
+          state.event.cy += (state.width + state.x - width - x) * ratio;
           break;
         default:
-          state.event.cx += (x - state.x) * state.viewScale;
-          state.event.cy += (y - state.y) * state.viewScale;
+          state.event.cx += (x - state.x) * ratio;
+          state.event.cy += (y - state.y) * ratio;
       }
       Object.assign(state, { x, y, width, height });
       this.clean(1);
@@ -679,6 +681,14 @@
         scale = height / sHeight;
       }
       state.scale *= scale;
+      state.viewScale /= scale;
+      if (state.range.width) {
+        state.range.width = (state.range.width * scale)>>0;
+        state.range.height = (state.range.height * scale) >> 0;
+        state.range.x = (state.range.x * scale) >> 0;
+        state.range.y = (state.range.y * scale) >> 0;
+        this.canvas && draw(this.canvas, state, this.img);
+      }
       stateChange(state, 'resize');
       return this;
     }
