@@ -481,6 +481,7 @@ class ImgEdit {
       this.canvas.width / state.width,
       this.canvas.height / state.height
     );
+    state.range.width = state.range.height = state.range.x = state.range.y = 0;
     align('center', this.canvas, state);
     if (!noDraw) {
       this.canvas && draw(this.canvas, state, this.img);
@@ -492,7 +493,7 @@ class ImgEdit {
   clean (noDraw) {
     const state = data[this._id];
     if (!this.img) return this;
-    state.range.width = state.range.height = 0;
+    state.range.width = state.range.height = state.range.x = state.range.y = 0;
     if (!noDraw) {
       this.canvas && draw(this.canvas, state, this.img);
       stateChange(state, 'clean');
@@ -680,7 +681,7 @@ class ImgEdit {
     if (!this.img) return this;
     const state = data[this._id];
     // 90,180,270转.5,1,1.5
-    if (angle > 2 || angle < -2) angle = angle / 90 * .5;
+    if (angle > 2 || angle < -2) angle = angle / 180;
     angle += state.angle;
     angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
     // 只接受0,.5,1,1.5
@@ -699,12 +700,19 @@ class ImgEdit {
   }
   setRange (width, height, x = 0, y = 0) {
     if (!this.img) return this;
+    const state = data[this._id];
     width >>= 0;
     height >>= 0;
     x >>= 0;
     y >>= 0;
-    if (width && height && width > 0 && height > 0 && x >= 0 && y >= 0) {
-      const state = data[this._id];
+    let iw = (state.width * state.scale)>>0;
+    let ih = (state.height * state.scale)>>0;
+    if (state.angle === .5 || state.angle === 1.5) {
+      [iw, ih] = [ih, iw];
+    }
+    if (width && height && width > 0 && height > 0 && (width < iw || height < ih) && x >= 0 && y >= 0 && x < iw && y < ih) {
+      width = Math.min(iw - x, width);
+      height = Math.min(ih - y, height);
       Object.assign(state.range, { width, height, x, y });
       this.canvas && draw(this.canvas, state, this.img);
       stateChange(state, 'range');
