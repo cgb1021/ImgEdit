@@ -690,17 +690,16 @@ class ImgEdit {
   }
   // 旋转
   rotate (angle) {
-    if (!this.img) return this;
+    if (!this.img || !angle) return this;
     const state = data[this._id];
     // 90,180,270转.5,1,1.5
     if (angle > 2 || angle < -2) angle = angle / 180;
     angle += state.angle;
     angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
     // 只接受0,.5,1,1.5
-    if (angle % .5) return this;
-    state.angle = angle;
+    if (angle % .5 || angle === state.angle) return this;
     const ratio = state.viewScale * state.scale * .5;
-    if (state.angle === .5 || state.angle === 1.5) {
+    if (angle === .5 || angle === 1.5) {
       state.event.cx -= (state.height - state.width) * ratio;
       state.event.cy -= (state.width - state.height) * ratio;
     } else {
@@ -708,8 +707,22 @@ class ImgEdit {
       state.event.cy -= (state.height - state.width) * ratio;
     }
     if (state.range.width) {
-      console.log('TODO');
+      let { x, y, width, height } = state.range;
+      let iw = state.width * state.scale;
+      let ih = state.height * state.scale;
+      if (state.angle === .5 || state.angle === 1.5) [ iw, ih ] = [ ih, iw ];
+      switch (angle - state.angle) {
+        case -1.5:
+        case .5: [ x, y, width, height ] = [ ih - height - y, x, height, width ];
+          break;
+        case -.5:
+        case 1.5: [ x, y, width, height ] = [ y, iw - width - x, height, width ];
+          break;
+        default: [ x, y ] = [ iw - width - x, ih - height - y ];
+      }
+      Object.assign(state.range, { x, y, width, height });
     }
+    state.angle = angle;
     this.canvas && draw(this.canvas, state, this.img);
     stateChange(state, 'rotate');
     return this;
