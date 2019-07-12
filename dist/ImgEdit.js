@@ -123,11 +123,7 @@
           if (ctrlKey) {
             const ratio = state.viewScale * state.scale;
             const { cx, cy } = state.event;
-            let iw = state.width * ratio;
-            let ih = state.height * ratio;
-            if (state.angle === .5 || state.angle === 1.5) {
-              [ iw, ih ] = [ ih, iw ];
-            }
+            const [ iw, ih ] = state.angle === .5 || state.angle === 1.5 ? [ state.height * ratio, state.width * ratio ] : [ state.width * ratio, state.height * ratio ];
             let x = Math.max(cx, Math.min(e.offsetX, eventData.offsetX));
             let y = Math.max(cy, Math.min(e.offsetY, eventData.offsetY));
             let width = Math.min(cx + iw, Math.max(e.offsetX, eventData.offsetX)) - x;
@@ -704,29 +700,36 @@
       angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
       // 只接受0,.5,1,1.5
       if (angle % .5 || angle === state.angle) return this;
-      const ratio = state.viewScale * state.scale * .5;
-      if (angle === .5 || angle === 1.5) {
-        state.event.cx -= (state.height - state.width) * ratio;
-        state.event.cy -= (state.width - state.height) * ratio;
-      } else {
-        state.event.cx -= (state.width - state.height) * ratio;
-        state.event.cy -= (state.height - state.width) * ratio;
+      const ratio = state.viewScale * .5;
+      const diff = angle - state.angle;
+      const [ iw, ih ] = state.angle === .5 || state.angle === 1.5 ? [ state.height * state.scale, state.width * state.scale ] : [ state.width * state.scale, state.height * state.scale ];
+      switch (diff) {
+        case -1.5:
+        case .5:
+        case 1.5:
+        case -.5:
+          state.event.cx -= (ih - iw) * ratio;
+          state.event.cy -= (iw - ih) * ratio;
+          break;
+        default:
+          state.event.cx -= (iw - ih) * ratio;
+          state.event.cy -= (ih - iw) * ratio;
       }
       if (state.range.width) {
         let { x, y, width, height } = state.range;
-        let iw = state.width * state.scale;
-        let ih = state.height * state.scale;
-        if (state.angle === .5 || state.angle === 1.5) [ iw, ih ] = [ ih, iw ];
-        switch (angle - state.angle) {
+        switch (diff) {
+          // 顺时针
           case -1.5:
           case .5: [ x, y, width, height ] = [ ih - height - y, x, height, width ];
             break;
+          // 逆时针
           case -.5:
           case 1.5: [ x, y, width, height ] = [ y, iw - width - x, height, width ];
             break;
+          // 平翻
           default: [ x, y ] = [ iw - width - x, ih - height - y ];
         }
-        Object.assign(state.range, { x, y, width, height });
+        Object.assign(state.range, { x: x>>0, y: y>>0, width, height });
       }
       state.angle = angle;
       this.canvas && draw(this.canvas, state, this.img);
@@ -740,11 +743,7 @@
       height >>= 0;
       x >>= 0;
       y >>= 0;
-      let iw = (state.width * state.scale)>>0;
-      let ih = (state.height * state.scale)>>0;
-      if (state.angle === .5 || state.angle === 1.5) {
-        [iw, ih] = [ih, iw];
-      }
+      const [ iw, ih ] = state.angle === .5 || state.angle === 1.5 ? [ (state.height * state.scale)>>0, (state.width * state.scale)>>0 ] : [ (state.width * state.scale)>>0, (state.height * state.scale)>>0 ];
       if (width && height && width > 0 && height > 0 && (width < iw || height < ih) && x >= 0 && y >= 0 && x < iw && y < ih) {
         width = Math.min(iw - x, width);
         height = Math.min(ih - y, height);
