@@ -395,7 +395,7 @@
       };
       const state = data[this._id];
       // 获取canvas元素
-      if (typeof option === 'object') {
+      if (option && typeof option === 'object') {
         if (option instanceof HTMLCanvasElement)
           this.canvas = option;
         else {
@@ -414,7 +414,6 @@
                 this.listen(option.input, option.inputListener);
                 break;
               default:
-                state[k] = option[k];
             }
           }
         }
@@ -510,11 +509,13 @@
     }
     // 获取图片宽度
     width() {
-      return data[this._id].width;
+      const state = data[this._id];
+      return (state.width * state.scale)>>0;
     }
     // 获取图片高度
     height() {
-      return data[this._id].height;
+      const state = data[this._id];
+      return (state.height * state.scale) >> 0;
     }
     /*
      * 异步打开图片
@@ -571,22 +572,24 @@
       } else {
         state.viewScale = s;
       }
+      const ratio = state.scale * viewScale;
       if ((state.offsetX || state.offsetY)
           && state.offsetX - state.cx > 0
           && state.offsetY - state.cy > 0
-          && state.offsetX < state.cx + state.width * viewScale
-          && state.offsetY < state.cy + state.height * viewScale) {
+          && state.offsetX < state.cx + state.width * ratio
+          && state.offsetY < state.cy + state.height * ratio) {
         // 在图片范围内，以鼠标位置为中心
         state.event.cx -= ((eventData.offsetX - state.event.cx) / viewScale) * scale;
         state.event.cy -= ((eventData.offsetY - state.event.cy) / viewScale) * scale;
       } else {
         // 以图片在画布范围内中心点
+        const ratio = state.scale * scale * .5;
         if (state.angle === .5 || state.angle === 1.5) {
-          state.event.cx -= state.height * scale * .5;
-          state.event.cy -= state.width * scale * .5;
+          state.event.cx -= state.height * ratio;
+          state.event.cy -= state.width * ratio;
         } else {
-          state.event.cx -= state.width * scale * .5;
-          state.event.cy -= state.height * scale * .5;
+          state.event.cx -= state.width * ratio;
+          state.event.cy -= state.height * ratio;
         }
       }
       this.canvas && draw(this.canvas, state, this.img);
