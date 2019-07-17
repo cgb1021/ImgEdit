@@ -52,7 +52,7 @@
         resolve(file);
       };
       xhr.onerror = (e) => {
-        console.log('fetchImg err', e);
+        console.error('fetchImg err', e);
         reject(e);
       };
       xhr.open('GET', url);
@@ -317,8 +317,8 @@
       // 变换坐标轴
       context.save();
       if (state.angle) {
-        const hWidth = canvas.width * 0.5;
-        const hHeight = canvas.height * 0.5;
+        const hWidth = canvas.width >> 1;
+        const hHeight = canvas.height >> 1;
         context.translate(hWidth, hHeight);
         context.rotate(window.Math.PI * state.angle);
         if (state.angle !== 1) {
@@ -510,7 +510,7 @@
     // 获取图片宽度
     width() {
       const state = data[this._id];
-      return (state.width * state.scale)>>0;
+      return (state.width * state.scale) >> 0;
     }
     // 获取图片高度
     height() {
@@ -550,9 +550,9 @@
       return save(this.img, data[this._id], 'toDataURL', mime, quality);
     }
     toBlob (mime, quality) {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         if (!this.img) {
-          resolve(0);
+          reject(new Error(this.img));
         } else {
           save(this.img, data[this._id], 'toBlob', (res) => {
             resolve(res);
@@ -684,7 +684,7 @@
       state.scale *= scale;
       state.viewScale /= scale;
       if (state.range.width) {
-        state.range.width = (state.range.width * scale)>>0;
+        state.range.width = (state.range.width * scale) >> 0;
         state.range.height = (state.range.height * scale) >> 0;
         state.range.x = (state.range.x * scale) >> 0;
         state.range.y = (state.range.y * scale) >> 0;
@@ -732,7 +732,7 @@
           // 平翻
           default: [ x, y ] = [ iw - width - x, ih - height - y ];
         }
-        Object.assign(state.range, { x: x>>0, y: y>>0, width, height });
+        Object.assign(state.range, { x, y, width, height });
       }
       state.angle = angle;
       this.canvas && draw(this.canvas, state, this.img);
@@ -746,7 +746,7 @@
       height >>= 0;
       x >>= 0;
       y >>= 0;
-      const [ iw, ih ] = state.angle === .5 || state.angle === 1.5 ? [ (state.height * state.scale)>>0, (state.width * state.scale)>>0 ] : [ (state.width * state.scale)>>0, (state.height * state.scale)>>0 ];
+      const [ iw, ih ] = state.angle === .5 || state.angle === 1.5 ? [ (state.height * state.scale) >> 0, (state.width * state.scale) >> 0 ] : [ (state.width * state.scale) >> 0, (state.height * state.scale) >> 0 ];
       if (width && height && width > 0 && height > 0 && (width < iw || height < ih) && x >= 0 && y >= 0 && x < iw && y < ih) {
         width = Math.min(iw - x, width);
         height = Math.min(ih - y, height);
