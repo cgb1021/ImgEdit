@@ -8,89 +8,11 @@ const eventData = {
   offsetX: 0, // 点击事件开始x轴位置
   offsetY: 0 // 点击事件开始y轴位置
 };
-const fontSize = 12;
-const lineHeight = 1.2;
 let ctrlKey = false; // ctrl键按下标记
 window.addEventListener('load', () => {
   window.addEventListener("keydown", keyEvent, false);
   window.addEventListener("keyup", keyEvent, false);
 });
-/* 
- * 加载线上图片
- *
- * @param {string} url
- * @return {object} promise
- */
-export const fetchImg = (url) => {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.responseType = 'blob';
-    xhr.onload = () => {
-      const file = xhr.response;
-      let name = '';
-      const m = url.match(/[\w.-]+\.(?:jpe?g|png|gif|bmp)$/);
-      if (m) name = m[0];
-      else {
-        name = Date.now();
-        const ext = file.type.split('/')[1];
-        switch (ext) {
-          case 'jpeg':
-            name = `${name}.jpg`;
-            break;
-          default:
-            name = `${name}.${ext}`;
-            break;
-        }
-      }
-      file.name = name;
-      resolve(file);
-    }
-    xhr.onerror = (e) => {
-      console.error('fetchImg err', e);
-      reject(e);
-    }
-    xhr.open('GET', url);
-    // xhr.overrideMimeType('text/plain; charset=x-user-defined')
-    xhr.send(null);
-  })
-}
-/* 
- * 加载图片
- *
- * @param {string} src url/base64
- * @return {object} promise
- */
-export function loadImg (src) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  return new Promise((resolve, reject) => {
-    img.onload = function () {
-      resolve(this);
-    }
-    img.onerror = function (e) {
-      console.error('loadImg error', e);
-      reject(e);
-    }
-    img.src = src;
-  })
-}
-/* 
- * 图片转base64
- *
- * @param {object} file
- * @return {object} promise
- */
-export function readFile(file) {
-  const fileReader = new FileReader;
-  return new Promise((resolve, reject) => {
-    fileReader.onload = (e) => { resolve(e.target.result) }
-    fileReader.onerror = (e) => {
-      console.error('readFile error', e);
-      reject(e);
-    }
-    fileReader.readAsDataURL(file);
-  })
-}
 // 移动事件
 function moveEvent(e) {
   e.preventDefault();
@@ -218,45 +140,18 @@ function align (pos, canvas, state) {
       }
   }
 }
-/*
- * 画文字
- */
-function drawText (context, str, x, y, align = 'left') {
-  const padding = 5;
-  context.font = `${fontSize}px Arial`;
-  const m = context.measureText(str);
-  context.fillStyle = "rgba(255,255,255,.5)";
-  context.fillRect(align !== 'right' ? x : x - m.width - padding * 2, y - fontSize * lineHeight, m.width + padding * 2 - 1, fontSize * lineHeight * 1.5 - 1);
-  context.fillStyle = "#000";
-  context.textAlign = align;
-  context.fillText(
-    str,
-    align !== 'right' ? x + padding : x - padding,
-    y
-  );
-}
 /* 
  * 画矩形选择框
  */
 function drawRect (context, state) {
   const { cx, cy } = state.event;
-  let { x: rx, y: ry, width: rw, height: rh } = state.range;
-  if (rw < 0) {
-    rx += rw;
-    rw = -rw;
-  }
-  if (rh < 0) {
-    ry += rh;
-    rh = -rh;
-  }
-  if (rw && rh) {
+  let { x, y, width, height } = state.range;
+  if (width && height) {
     const ratio = state.viewScale;
     context.setLineDash([5, 2]);
     context.strokeStyle = "black";
     context.lineWidth = 1;
-    context.strokeRect(cx + rx * ratio, cy + ry * ratio, rw * ratio, rh * ratio);
-    drawText(context, `${rx}, ${ry}`, cx + rx * ratio, cy + ry * ratio + fontSize * lineHeight);
-    drawText(context, `${rw} x ${rh}`, cx + (rx + rw) * ratio, cy + (ry + rh) * ratio - fontSize * .5, 'right');
+    context.strokeRect(cx + x * ratio, cy + y * ratio, width * ratio, height * ratio);
   }
 }
 /* 
@@ -404,9 +299,6 @@ class ImgEdit {
             case 'height':
               this.canvas.height = option.height;
               break;
-            case 'input':
-              this.listen(option.input, option.inputListener);
-              break;
             default:;
           }
         }
@@ -425,7 +317,6 @@ class ImgEdit {
     }
   }
   destroy () {
-    this.unlisten();
     if (this.canvas) {
       this.canvas.removeEventListener('mousewheel', data[this._id].moveEvent, false);
       this.canvas.removeEventListener('mousedown', data[this._id].moveEvent, false);
@@ -758,6 +649,84 @@ class ImgEdit {
     stateChange(state, 'align');
     return this;
   }
+}
+/* 
+ * 加载线上图片
+ *
+ * @param {string} url
+ * @return {object} promise
+ */
+export const fetchImg = (url) => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.responseType = 'blob';
+    xhr.onload = () => {
+      const file = xhr.response;
+      let name = '';
+      const m = url.match(/[\w.-]+\.(?:jpe?g|png|gif|bmp)$/);
+      if (m) name = m[0];
+      else {
+        name = Date.now();
+        const ext = file.type.split('/')[1];
+        switch (ext) {
+          case 'jpeg':
+            name = `${name}.jpg`;
+            break;
+          default:
+            name = `${name}.${ext}`;
+            break;
+        }
+      }
+      file.name = name;
+      resolve(file);
+    }
+    xhr.onerror = (e) => {
+      console.error('fetchImg err', e);
+      reject(e);
+    }
+    xhr.open('GET', url);
+    // xhr.overrideMimeType('text/plain; charset=x-user-defined')
+    xhr.send(null);
+  })
+}
+/* 
+ * 加载图片
+ *
+ * @param {string} src url/base64
+ * @return {object} promise
+ */
+export function loadImg(src) {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  return new Promise((resolve, reject) => {
+    img.onload = function () {
+      resolve(this);
+    }
+    img.onerror = function (e) {
+      console.error('loadImg error', e);
+      reject(e);
+    }
+    img.src = src;
+  })
+}
+/* 
+ * 图片转base64
+ *
+ * @param {object} file
+ * @return {object} promise
+ */
+export function readFile(file) {
+  const fileReader = new FileReader;
+  return new Promise((resolve, reject) => {
+    fileReader.onload = (e) => {
+      resolve(e.target.result)
+    }
+    fileReader.onerror = (e) => {
+      console.error('readFile error', e);
+      reject(e);
+    }
+    fileReader.readAsDataURL(file);
+  })
 }
 export const resize = async (img, width, height) => {
   if (!width && !height) return false;
