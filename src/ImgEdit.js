@@ -60,12 +60,12 @@ function moveEvent(e) {
       break;
     case 'mousewheel':
       const direct = e.wheelDelta ?
-        e.wheelDelta > 0 ?
+        (e.wheelDelta > 0 ?
         0 :
-        1 :
-        e.detail > 0 ?
+        1) :
+        (e.detail > 0 ?
         0 :
-        1; // 0 上(缩小，scale变小) 1 下(放大，scale变大)
+        1); // 0 上(缩小，scale变小) 1 下(放大，scale变大)
       eventData.offsetX = e.offsetX;
       eventData.offsetY = e.offsetY;
       switch (state.angle) {
@@ -316,9 +316,8 @@ class ImgEdit {
       draw(this.canvas, state);
     }
     Object.defineProperty(this, 'id', {
-      get () {
-        return id;
-      }
+      value: id,
+      writable: false
     })
   }
   destroy () {
