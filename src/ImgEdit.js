@@ -704,13 +704,13 @@ export const fetchImg = (url) => {
  * @return {object} promise
  */
 export function loadImg(src) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
   return new Promise((resolve, reject) => {
-    if (!/^(?:(?:https?:)?\/\/|data:image\/[^;]+;\s*base64\s*,)/i.test(src)) {
+    if (typeof src !== 'string' || !/^(?:data:image\/[^;]+;\s*base64\s*,|(?:https?:)?\/\/)/i.test(src)) {
       reject(0);
       return;
     }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = function () {
       resolve(this);
     }
@@ -728,8 +728,8 @@ export function loadImg(src) {
  * @return {object} promise
  */
 export function readFile(file) {
-  const fileReader = new FileReader;
   return new Promise((resolve, reject) => {
+    const fileReader = new FileReader;
     fileReader.onload = (e) => {
       resolve(e.target.result)
     }
