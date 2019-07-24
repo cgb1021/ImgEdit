@@ -337,12 +337,12 @@ class ImgEdit {
       data[this.id].inputListener = (e) => {
         const res = hook(e);
         if (res === undefined || res) {
-          this.open(e.target.files[0]);
+          this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
         }
       }
     else {
       data[this.id].inputListener = (e) => {
-        this.open(e.target.files[0]);
+        this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
       }
     }
     this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el);
@@ -351,7 +351,10 @@ class ImgEdit {
   }
   // 删除输入源监听
   unlisten () {
-    this.input && this.input.removeEventListener('change', data[this.id].inputListener);
+    if (this.input) {
+      this.input.removeEventListener('change', data[this.id].inputListener);
+      data[this.id].inputListener = null;
+    }
     return this;
   }
   onChange (fn) {
@@ -704,6 +707,10 @@ export function loadImg(src) {
   const img = new Image();
   img.crossOrigin = "anonymous";
   return new Promise((resolve, reject) => {
+    if (!/^(?:(?:https?:)?\/\/|data:image\/[^;]+;\s*base64\s*,)/i.test(src)) {
+      reject(0);
+      return;
+    }
     img.onload = function () {
       resolve(this);
     }
