@@ -423,7 +423,12 @@
     async open (file) {
       const state = data[this.id];
       try {
-        this.img = await loadImg(file instanceof Image ? file.src : (typeof file === 'object' ? await readFile(file) : file));
+        if (file instanceof Image) {
+          if (/^blob:/.test(file.src)) this.img = file;
+          else this.img = await loadImg(file.src);
+        } else {
+          this.img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
+        }
       } catch(e) {
         stateChange(state, 'error');
         return this;
@@ -714,14 +719,16 @@
         reject(0);
         return;
       }
-      const img = new Image();
+      let img = new Image;
       img.crossOrigin = "anonymous";
       img.onload = function () {
         resolve(this);
+        img = img.onload = img.onerror = null;
       };
       img.onerror = function (e) {
         console.error('loadImg error', e);
         reject(e);
+        img = img.onload = img.onerror = null;
       };
       img.src = src;
     })
@@ -734,13 +741,15 @@
    */
   function readFile(file) {
     return new Promise((resolve, reject) => {
-      const fileReader = new FileReader;
+      let fileReader = new FileReader;
       fileReader.onload = (e) => {
         resolve(e.target.result);
+        fileReader = fileReader.onload = fileReader.onerror = null;
       };
       fileReader.onerror = (e) => {
         console.error('readFile error', e);
         reject(e);
+        fileReader = fileReader.onload = fileReader.onerror = null;
       };
       fileReader.readAsDataURL(file);
     })
