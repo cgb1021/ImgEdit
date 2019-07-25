@@ -5,7 +5,7 @@
 }(this, function (exports) { 'use strict';
 
   /*
-   * 图片编辑器
+   * 图片编辑器（图片编辑而不是图片合成）
    */
   const undefined$1 = void 0;
   const data = {};
@@ -117,8 +117,8 @@
   }
   // 设置对齐
   function align (pos, canvas, state) {
-    let sWidth = state.width * state.viewScale * state.scale;
-    let sHeight = state.height * state.viewScale * state.scale;
+    let width = state.width * state.viewScale * state.scale;
+    let height = state.height * state.viewScale * state.scale;
     switch (pos) {
       case 'top':
       case 1:
@@ -126,11 +126,11 @@
         break;
       case 'right':
       case 2:
-        state.event.cx = canvas.width - (!state.angle || state.angle === 1 ? sWidth : sHeight);
+        state.event.cx = canvas.width - (!state.angle || state.angle === 1 ? width : height);
         break;
       case 'bottom':
       case 3:
-        state.event.cy = canvas.height - (!state.angle || state.angle === 1 ? sHeight : sWidth);
+        state.event.cy = canvas.height - (!state.angle || state.angle === 1 ? height : width);
         break;
       case 'left':
       case 4:
@@ -138,11 +138,11 @@
         break;
       default: // center
         if (!state.angle || state.angle === 1) {
-          state.event.cx = (canvas.width - sWidth) / 2;
-          state.event.cy = (canvas.height - sHeight) / 2;
+          state.event.cx = (canvas.width - width) / 2;
+          state.event.cy = (canvas.height - height) / 2;
         } else {
-          state.event.cx = (canvas.width - sHeight) / 2;
-          state.event.cy = (canvas.height - sWidth) / 2;
+          state.event.cx = (canvas.width - height) / 2;
+          state.event.cy = (canvas.height - width) / 2;
         }
     }
   }
@@ -190,20 +190,20 @@
     if (img) {
       // 坐标转换
       const ratio = state.viewScale * state.scale;
-      const sWidth = state.width * ratio;
-      const sHeight = state.height * ratio;
+      const width = state.width * ratio;
+      const height = state.height * ratio;
       switch (state.angle) {
         case 0.5: // 顺时针90°
           state.cx = state.event.cy;
-          state.cy = canvas.width - state.event.cx - sHeight;
+          state.cy = canvas.width - state.event.cx - height;
           break;
         case 1.5: // 逆时针90°
-          state.cx = canvas.height - state.event.cy - sWidth;
+          state.cx = canvas.height - state.event.cy - width;
           state.cy = state.event.cx;
           break;
         case 1: // 180°
-          state.cx = canvas.width - state.event.cx - sWidth;
-          state.cy = canvas.height - state.event.cy - sHeight;
+          state.cx = canvas.width - state.event.cx - width;
+          state.cy = canvas.height - state.event.cy - height;
           break;
         default: // 0°
           state.cx = state.event.cx;
@@ -222,8 +222,8 @@
           context.translate(-hWidth, -hHeight);
         }
       }
-      // console.log(state.x, state.y, state.width, state.height, cx, cy, sWidth, sHeight);
-      context.drawImage(img, state.x, state.y, state.width, state.height, state.cx, state.cy, sWidth, sHeight);
+      // console.log(state.x, state.y, state.width, state.height, cx, cy, width, height);
+      context.drawImage(img, state.x, state.y, state.width, state.height, state.cx, state.cy, width, height);
       context.restore();
       /*绘制图片结束*/
       // 画矩形选择框
