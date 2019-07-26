@@ -145,6 +145,12 @@ loadImg(src)
  */
 readFile(file)
 /*
+ * 上传图片预览
+ * @param {blob} file 二进制文件
+ * @return Promise
+ */
+preview(file)
+/*
  * 按比例调整图片大小
  * @param {object/string} img blob/url/base64
  * @param {int} width

@@ -734,7 +734,7 @@ export function loadImg(src) {
 /* 
  * 图片转base64
  *
- * @param {object} file
+ * @param {blob} file
  * @return {object} promise
  */
 export function readFile(file) {
@@ -753,6 +753,12 @@ export function readFile(file) {
     fileReader.readAsDataURL(file);
   })
 }
+/* 
+ * 上传图片预览
+ *
+ * @param {blob} file
+ * @return {object} promise
+ */
 export const preview = (file) => {
   return new Promise((resolve, reject) => {
     if (!file || typeof file !== 'object') reject(0);

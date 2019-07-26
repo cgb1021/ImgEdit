@@ -740,7 +740,7 @@
   /* 
    * 图片转base64
    *
-   * @param {object} file
+   * @param {blob} file
    * @return {object} promise
    */
   function readFile(file) {
@@ -759,6 +759,12 @@
       fileReader.readAsDataURL(file);
     })
   }
+  /* 
+   * 上传图片预览
+   *
+   * @param {blob} file
+   * @return {object} promise
+   */
   const preview = (file) => {
     return new Promise((resolve, reject) => {
       if (!file || typeof file !== 'object') reject(0);
