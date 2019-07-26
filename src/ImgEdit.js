@@ -299,6 +299,9 @@ class ImgEdit {
             case 'height':
               this.canvas.height = option.height;
               break;
+            case 'bg':
+              state.bg = !!option.bg;
+              break;
             default:;
           }
         }
@@ -330,7 +333,7 @@ class ImgEdit {
     }
     this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = this.input = this.canvas = null;
   }
-  // 监听输入源(<input type=file>)变化
+  // 监听输入源(<input type=file|text>)变化
   listen (el, hook) {
     if (typeof hook === 'function')
       data[this.id].inputListener = (e) => {
@@ -670,6 +673,7 @@ class ImgEdit {
  */
 export const fetchImg = (url) => {
   return new Promise((resolve, reject) => {
+    if (!url || typeof url !== 'string' || !/^(?:https?:)?\/\//i.test(url)) reject(0);
     const xhr = new XMLHttpRequest();
     xhr.responseType = 'blob';
     xhr.onload = () => {
@@ -709,7 +713,7 @@ export const fetchImg = (url) => {
  */
 export function loadImg(src) {
   return new Promise((resolve, reject) => {
-    if (typeof src !== 'string' || !/^(?:data:image\/[^;]+;\s*base64\s*,|(?:https?:)?\/\/)/i.test(src)) {
+    if (!src || typeof src !== 'string' || !/^(?:data:image\/[^;]+;\s*base64\s*,|(?:https?:)?\/\/)/i.test(src)) {
       reject(0);
       return;
     }
@@ -721,8 +725,8 @@ export function loadImg(src) {
     }
     img.onerror = function (e) {
       console.error('loadImg error', e);
-      reject(e);
       img = img.onload = img.onerror = null;
+      reject(e);
     }
     img.src = src;
   })
@@ -735,6 +739,7 @@ export function loadImg(src) {
  */
 export function readFile(file) {
   return new Promise((resolve, reject) => {
+    if (!file || typeof file !== 'object') reject(0);
     let fileReader = new FileReader;
     fileReader.onload = (e) => {
       resolve(e.target.result);
@@ -742,10 +747,34 @@ export function readFile(file) {
     }
     fileReader.onerror = (e) => {
       console.error('readFile error', e);
-      reject(e);
       fileReader = fileReader.onload = fileReader.onerror = null;
+      reject(e);
     }
     fileReader.readAsDataURL(file);
+  })
+}
+export const preview = (file) => {
+  return new Promise((resolve, reject) => {
+    if (!file || typeof file !== 'object') reject(0);
+    if ('URL' in window) {
+      let img = new Image;
+      img.onload = function () {
+        window.URL.revokeObjectURL(this.src);
+        img = img.onload = img.onerror = null;
+      }
+      img.onerror = (e) => {
+        img = img.onload = img.onerror = null;
+        reject(e);
+      }
+      img.src = window.URL.createObjectURL(file);
+      resolve(img);
+    } else {
+      readFile(file).then((b64) => {
+        loadImg(b64).then((img) => {
+          resolve(img);
+        })
+      })
+    }
   })
 }
 export const resize = async (img, width, height) => {

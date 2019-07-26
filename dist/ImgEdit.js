@@ -305,6 +305,9 @@
               case 'height':
                 this.canvas.height = option.height;
                 break;
+              case 'bg':
+                state.bg = !!option.bg;
+                break;
               default:
             }
           }
@@ -336,7 +339,7 @@
       }
       this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = this.input = this.canvas = null;
     }
-    // 监听输入源(<input type=file>)变化
+    // 监听输入源(<input type=file|text>)变化
     listen (el, hook) {
       if (typeof hook === 'function')
         data[this.id].inputListener = (e) => {
@@ -676,6 +679,7 @@
    */
   const fetchImg = (url) => {
     return new Promise((resolve, reject) => {
+      if (!url || typeof url !== 'string' || !/^(?:https?:)?\/\//i.test(url)) reject(0);
       const xhr = new XMLHttpRequest();
       xhr.responseType = 'blob';
       xhr.onload = () => {
@@ -715,7 +719,7 @@
    */
   function loadImg(src) {
     return new Promise((resolve, reject) => {
-      if (typeof src !== 'string' || !/^(?:data:image\/[^;]+;\s*base64\s*,|(?:https?:)?\/\/)/i.test(src)) {
+      if (!src || typeof src !== 'string' || !/^(?:data:image\/[^;]+;\s*base64\s*,|(?:https?:)?\/\/)/i.test(src)) {
         reject(0);
         return;
       }
@@ -727,8 +731,8 @@
       };
       img.onerror = function (e) {
         console.error('loadImg error', e);
-        reject(e);
         img = img.onload = img.onerror = null;
+        reject(e);
       };
       img.src = src;
     })
@@ -741,6 +745,7 @@
    */
   function readFile(file) {
     return new Promise((resolve, reject) => {
+      if (!file || typeof file !== 'object') reject(0);
       let fileReader = new FileReader;
       fileReader.onload = (e) => {
         resolve(e.target.result);
@@ -748,12 +753,36 @@
       };
       fileReader.onerror = (e) => {
         console.error('readFile error', e);
-        reject(e);
         fileReader = fileReader.onload = fileReader.onerror = null;
+        reject(e);
       };
       fileReader.readAsDataURL(file);
     })
   }
+  const preview = (file) => {
+    return new Promise((resolve, reject) => {
+      if (!file || typeof file !== 'object') reject(0);
+      if ('URL' in window) {
+        let img = new Image;
+        img.onload = function () {
+          window.URL.revokeObjectURL(this.src);
+          img = img.onload = img.onerror = null;
+        };
+        img.onerror = (e) => {
+          img = img.onload = img.onerror = null;
+          reject(e);
+        };
+        img.src = window.URL.createObjectURL(file);
+        resolve(img);
+      } else {
+        readFile(file).then((b64) => {
+          loadImg(b64).then((img) => {
+            resolve(img);
+          });
+        });
+      }
+    })
+  };
   const resize = async (img, width, height) => {
     if (!width && !height) return false;
     if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
@@ -798,6 +827,7 @@
   exports.default = ImgEdit;
   exports.fetchImg = fetchImg;
   exports.loadImg = loadImg;
+  exports.preview = preview;
   exports.readFile = readFile;
   exports.resize = resize;
   exports.rotate = rotate;

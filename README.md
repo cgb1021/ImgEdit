@@ -8,16 +8,12 @@ HTML5（canvas）图片编辑工具
 import ImgEdit from 'imgedit'
 
 /*
- * @params {object} option canvas元素或者配置项
+ * @params {object|HTMLCanvasElement|string} option配置项|canvas元素|canvas选择器
  */
 const edit = new ImgEdit({
         canvas: '#canvas', // 传入canvas元素或者该canvas选择器
         width: 800, // canvas宽度
-        height: 600, // canvas高度
-        input: '#file_input', // 监听input
-        inputListener () { // input onchange事件hook
-          console.log('input hook');
-        }
+        height: 600 // canvas高度
       })
 
 /*
@@ -25,7 +21,7 @@ const edit = new ImgEdit({
  */
 edit.destroy()
 /*
- * 监听input[type=file]
+ * 监听输入源(<input type=file|text>)变化
  * @param {object/string} el input元素或者css选择器
  * @param {function} hook 监听方法
  */
