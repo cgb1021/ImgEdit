@@ -762,25 +762,17 @@
   const preview = (file) => {
     return new Promise((resolve, reject) => {
       if (!file || typeof file !== 'object') reject(0);
-      if ('URL' in window) {
-        let img = new Image;
-        img.onload = function () {
-          window.URL.revokeObjectURL(this.src);
-          img = img.onload = img.onerror = null;
-        };
-        img.onerror = (e) => {
-          img = img.onload = img.onerror = null;
-          reject(e);
-        };
-        img.src = window.URL.createObjectURL(file);
-        resolve(img);
-      } else {
-        readFile(file).then((b64) => {
-          loadImg(b64).then((img) => {
-            resolve(img);
-          });
-        });
-      }
+      let img = new Image;
+      img.onload = function () {
+        URL.revokeObjectURL(this.src);
+        img = img.onload = img.onerror = null;
+      };
+      img.onerror = (e) => {
+        img = img.onload = img.onerror = null;
+        reject(e);
+      };
+      img.src = URL.createObjectURL(file);
+      resolve(img);
     })
   };
   const resize = async (img, width, height) => {
