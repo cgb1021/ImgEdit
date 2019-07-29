@@ -58,6 +58,16 @@ edit.height()
  */
 edit.onChange(fn)
 /*
+ * 画图前触发
+ * @param {function} fn
+ */
+edit.before(fn)
+/*
+ * 画图后触发
+ * @param {function} fn
+ */
+edit.after(fn)
+/*
  * 打开文件
  * @param {object/string} file blob/base64/url
  * @return Promise
