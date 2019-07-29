@@ -88,7 +88,7 @@
             state.offsetX = e.offsetX;
             state.offsetY = e.offsetY;
         }
-        this.scale(direct ? 0.1 : -0.1);
+        this.scale(state.viewScale + (direct ? 0.1 : -0.1));
         state.offsetX = state.offsetY = 0;
         break;
     }
@@ -101,7 +101,7 @@
       if (state.angle && state.angle !== 1) {
         [width, height] = [height, width];
       }
-      state.onChange({ width, height, viewScale: state.viewScale.toFixed(2), range, type });
+      state.onChange({ width, height, viewScale: window.parseFloat(state.viewScale.toFixed(2)), range, type });
     }
   }
   // 设置对齐
@@ -449,12 +449,12 @@
       })
     }
     // 视图缩放
-    scale (scale) {
+    scale (s) {
       if (!this.img) return this;
       const state = data[this.id];
       // 放大比例不能小于1或大于10
       const viewScale = state.viewScale;
-      const s = viewScale + scale;
+      const scale = s - viewScale;
       if (s < .1 || s > 10) {
         return this;
       } else {
