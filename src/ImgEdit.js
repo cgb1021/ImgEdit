@@ -9,10 +9,6 @@ const eventData = {
   offsetY: 0 // 点击事件开始y轴位置
 };
 let ctrlKey = false; // ctrl键按下标记
-window.addEventListener('load', () => {
-  window.addEventListener("keydown", keyEvent, false);
-  window.addEventListener("keyup", keyEvent, false);
-});
 // 移动事件
 function moveEvent(e) {
   e.preventDefault();
@@ -22,6 +18,7 @@ function moveEvent(e) {
   switch (e.type) {
     case 'mousedown':
       eventData.active = true;
+      ctrlKey = e.ctrlKey;
       if (!ctrlKey) {
         eventData.offsetX = e.offsetX - state.event.cx;
         eventData.offsetY = e.offsetY - state.event.cy;
@@ -87,14 +84,6 @@ function moveEvent(e) {
       }
       this.scale(direct ? 0.1 : -0.1);
       state.offsetX = state.offsetY = 0;
-      break;
-  }
-}
-function keyEvent(e) {
-  switch (e.type) {
-    case 'keyup':
-    case 'keydown':
-      ctrlKey = e.ctrlKey;
       break;
   }
 }
@@ -165,21 +154,7 @@ function draw (canvas, state, img) {
   const context = canvas.getContext('2d');
   context.clearRect(0, 0, canvas.width, canvas.height);
   // 画背景
-  if (state.bg) {
-    const bgSize = 10;
-    const xs = Math.ceil(canvas.width / bgSize); // 画canvas背景x轴循环次数
-    const ys = Math.ceil(canvas.height / bgSize); // 画canvas背景y轴循环次数
-    const color1 = "#ccc";
-    const color2 = "#eee"; // 画布和图片的比例
-    for (let y = 0; y < ys; ++y) {
-      let color = y % 2 ? color1 : color2;
-      for (let x = 0; x < xs; ++x) {
-        context.fillStyle = color;
-        context.fillRect(x * bgSize, y * bgSize, bgSize, bgSize);
-        color = color === color1 ? color2 : color1;
-      }
-    }
-  }
+  state.before && state.before(context);
   // 画图片
   if (img) {
     // 坐标转换
@@ -225,6 +200,7 @@ function draw (canvas, state, img) {
       drawRect(context, state);
     }
   }
+  state.after && state.after(context);
 }
 function save (img, state, method, ...args) {
   const canvas = document.createElement("canvas");
@@ -256,6 +232,10 @@ function save (img, state, method, ...args) {
 class ImgEdit {
   constructor (option) {
     const id = Symbol();
+    Object.defineProperty(this, 'id', {
+      value: id,
+      writable: false
+    })
     this.canvas = null;
     this.img = null, // new Image()
     data[id] = {
@@ -280,7 +260,8 @@ class ImgEdit {
         width: 0,  // 选择范围（cut）宽度（原始坐标系统）
         height: 0  // 选择范围（cut）高度（原始坐标系统）
       }, // 矩形选择框数据（左上角为原点）
-      bg: true
+      before: null,
+      after: null
     };
     const state = data[id];
     // 获取canvas元素
@@ -299,8 +280,9 @@ class ImgEdit {
             case 'height':
               this.canvas.height = option.height;
               break;
-            case 'bg':
-              state.bg = !!option.bg;
+            case 'before': this.before(option.before);
+              break;
+            case 'after': this.after(option.after);
               break;
             default:;
           }
@@ -318,10 +300,6 @@ class ImgEdit {
       state.moveEvent = event;
       draw(this.canvas, state);
     }
-    Object.defineProperty(this, 'id', {
-      value: id,
-      writable: false
-    })
   }
   destroy () {
     if (this.canvas) {
@@ -331,21 +309,17 @@ class ImgEdit {
       this.canvas.removeEventListener('mouseout', data[this.id].moveEvent, false);
       this.canvas.removeEventListener('mousemove', data[this.id].moveEvent, false);
     }
-    this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = this.input = this.canvas = null;
+    this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = data[this.id].before = data[this.id].after = this.input = this.canvas = null;
   }
   // 监听输入源(<input type=file|text>)变化
-  listen (el, hook) {
-    if (typeof hook === 'function')
-      data[this.id].inputListener = (e) => {
-        const res = hook(e);
-        if (res === undefined || res) {
-          this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
-        }
-      }
-    else {
-      data[this.id].inputListener = (e) => {
+  listen(el, hook) {
+    data[this.id].inputListener = typeof hook === 'function' ? (e) => {
+      const res = hook(e);
+      if (res === undefined || res) {
         this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
       }
+    } : (e) => {
+      this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
     }
     this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el);
     this.input.addEventListener('change', data[this.id].inputListener);
@@ -357,6 +331,14 @@ class ImgEdit {
       this.input.removeEventListener('change', data[this.id].inputListener);
       data[this.id].inputListener = null;
     }
+    return this;
+  }
+  before (fn) {
+    data[this.id].before = typeof fn === 'function' ? fn : null;
+    return this;
+  }
+  after (fn) {
+    data[this.id].after = typeof fn === 'function' ? fn : null;
     return this;
   }
   onChange (fn) {
