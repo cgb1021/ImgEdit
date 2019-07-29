@@ -433,11 +433,11 @@
       stateChange(state, 'draw');
       return this;
     }
-    toDataURL (mime, quality) {
+    toDataURL (mime = 'image/jpeg', quality = .8) {
       if (!this.img) return '';
       return save(this.img, data[this.id], 'toDataURL', mime, quality);
     }
-    toBlob (mime, quality) {
+    toBlob (mime = 'image/jpeg', quality = .8) {
       return new Promise((resolve, reject) => {
         if (!this.img) {
           reject(new Error(this.img));
