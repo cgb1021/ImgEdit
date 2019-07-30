@@ -95,7 +95,7 @@ function stateChange(state, type) {
     if (state.angle && state.angle !== 1) {
       [width, height] = [height, width];
     }
-    state.onChange({ width, height, viewScale: window.parseFloat(state.viewScale.toFixed(2)), range, type });
+    state.onChange({ width, height, scale: window.parseFloat(state.viewScale.toFixed(2)), range, type });
   }
 }
 // 设置对齐
@@ -747,10 +747,8 @@ export const preview = (file) => {
     let img = new Image;
     img.onload = function () {
       URL.revokeObjectURL(this.src);
-      img = img.onload = img.onerror = null;
     }
     img.onerror = (e) => {
-      img = img.onload = img.onerror = null;
       reject(e);
     }
     img.src = URL.createObjectURL(file);
