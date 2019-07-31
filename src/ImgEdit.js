@@ -345,6 +345,17 @@ class ImgEdit {
     data[this.id].onChange = typeof fn === 'function' ? fn : null;
     return this;
   }
+  // 获取图片宽度
+  width() {
+    const state = data[this.id];
+    return (state.width * state.scale) >> 0;
+  }
+  // 获取图片高度
+  height() {
+    const state = data[this.id];
+    return (state.height * state.scale) >> 0;
+  }
+  // 重置
   reset (noDraw) {
     const state = data[this.id];
     state.width = this.img.width;
@@ -382,17 +393,7 @@ class ImgEdit {
   }
   close () {
     this.img = null;
-    return this.reset(1);
-  }
-  // 获取图片宽度
-  width() {
-    const state = data[this.id];
-    return (state.width * state.scale) >> 0;
-  }
-  // 获取图片高度
-  height() {
-    const state = data[this.id];
-    return (state.height * state.scale) >> 0;
+    return this;
   }
   /*
    * 异步打开图片
@@ -400,7 +401,6 @@ class ImgEdit {
    * @return {object} Promise
    */
   async open (file) {
-    const state = data[this.id];
     try {
       if (file instanceof Image) {
         if (/^blob:/.test(file.src)) this.img = file;
@@ -409,9 +409,10 @@ class ImgEdit {
         this.img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
       }
     } catch(e) {
-      stateChange(state, 'error');
+      stateChange(null, 'error');
       return this;
     }
+    const state = data[this.id];
     state.width = this.img.width;
     state.height = this.img.height;
     if (this.canvas) {
