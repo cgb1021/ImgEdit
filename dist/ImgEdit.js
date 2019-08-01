@@ -352,14 +352,25 @@
       return this;
     }
     // 获取图片宽度
-    width() {
+    width () {
       const state = data[this.id];
       return (state.width * state.scale) >> 0;
     }
     // 获取图片高度
-    height() {
+    height () {
       const state = data[this.id];
       return (state.height * state.scale) >> 0;
+    }
+    canvasResize (width, height) {
+      const state = data[this.id];
+      this.canvas.width = (width || this.canvas.width) >> 0;
+      this.canvas.height = (height || this.canvas.height) >> 0;
+      state.viewScale = Math.min(1,
+        this.canvas.width / state.width,
+        this.canvas.height / state.height
+      );
+      draw(this.canvas, state, this.img);
+      return this;
     }
     // 重置
     reset (noDraw) {
