@@ -361,14 +361,22 @@
       const state = data[this.id];
       return (state.height * state.scale) >> 0;
     }
+    // 调整canvas尺寸
     canvasResize (width, height) {
+      if (!width && !height) return this;
       const state = data[this.id];
-      this.canvas.width = (width || this.canvas.width) >> 0;
-      this.canvas.height = (height || this.canvas.height) >> 0;
-      state.viewScale = Math.min(1,
-        this.canvas.width / state.width,
-        this.canvas.height / state.height
-      );
+      if (width) {
+        width >>= 0;
+        const rx = (width - this.canvas.width) >> 1;
+        this.canvas.width = width;
+        state.event.cx += rx;
+      }
+      if (height) {
+        height >>= 0;
+        const ry = (height - this.canvas.height) >> 1;
+        this.canvas.height = height;
+        state.event.cy += ry;
+      }
       draw(this.canvas, state, this.img);
       return this;
     }

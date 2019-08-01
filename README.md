@@ -53,6 +53,12 @@ edit.width()
  */
 edit.height()
 /*
+ * 修改canvas尺寸
+ * @param {int} width
+ * @param {int} height
+ */
+edit.canvasResize(width, height)
+/*
  * 设定状态变化监听方法
  * @param {function} fn
  */
