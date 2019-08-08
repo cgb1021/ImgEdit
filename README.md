@@ -5,6 +5,9 @@ HTML5（canvas）图片编辑工具
 ## 使用方法
 
 ```javascript
+npm i imgedit
+```
+```javascript
 import ImgEdit from 'imgedit'
 
 /*
