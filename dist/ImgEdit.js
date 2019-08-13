@@ -22,7 +22,7 @@
     if (!this.img) return;
     const state = data[this.id];
     const { cx, cy } = state;
-    const { width: iw, height: ih } = getInfo(state);
+    const { width: iw, height: ih } = getSize(state);
     switch (e.type) {
       case 'mousedown':
         ctrlKey = e.ctrlKey;
@@ -83,7 +83,7 @@
         break;
     }
   }
-  function getInfo (state) {
+  function getSize (state) {
     const ratio = state.viewScale * state.scale;
     const [width, height] = state.angle === .5 || state.angle === 1.5 ? [state.height * ratio, state.width * ratio] : [state.width * ratio, state.height * ratio];
     return { width, height, ratio };
@@ -101,8 +101,7 @@
   }
   // 设置对齐
   function align (pos, canvas, state) {
-    let width = state.width * state.viewScale * state.scale;
-    let height = state.height * state.viewScale * state.scale;
+    const { width, height } = getSize(state);
     switch (pos) {
       case 'top':
       case 1:
@@ -110,24 +109,19 @@
         break;
       case 'right':
       case 2:
-        state.cx = canvas.width - (!state.angle || state.angle === 1 ? width : height);
+        state.cx = canvas.width - width;
         break;
       case 'bottom':
       case 3:
-        state.cy = canvas.height - (!state.angle || state.angle === 1 ? height : width);
+        state.cy = canvas.height - height;
         break;
       case 'left':
       case 4:
         state.cx = 0;
         break;
       default: // center
-        if (!state.angle || state.angle === 1) {
-          state.cx = (canvas.width - width) / 2;
-          state.cy = (canvas.height - height) / 2;
-        } else {
-          state.cx = (canvas.width - height) / 2;
-          state.cy = (canvas.height - width) / 2;
-        }
+        state.cx = (canvas.width - width) / 2;
+        state.cy = (canvas.height - height) / 2;
     }
   }
   /* 
@@ -463,7 +457,7 @@
       // 放大比例不能小于1或大于10
       const viewScale = state.viewScale;
       const scale = s - viewScale;
-      const { width, height } = getInfo(state);
+      const { width, height } = getSize(state);
       if (s < .1 || s > 10) {
         return this;
       } else {
