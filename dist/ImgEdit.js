@@ -463,13 +463,13 @@
       // 放大比例不能小于1或大于10
       const viewScale = state.viewScale;
       const scale = s - viewScale;
+      const { width, height } = getInfo(state);
       if (s < .1 || s > 10) {
         return this;
       } else {
         state.viewScale = s;
       }
       const { cx, cy } = state;
-      const { width, height } = getInfo(state);
       if (wheel
           && eventData.offsetX > cx
           && eventData.offsetY > cy
