@@ -19,30 +19,38 @@
   function moveEvent(e) {
     e.preventDefault();
     e.stopPropagation();
-    const state = data[this.id];
     if (!this.img) return;
+    const state = data[this.id];
+    const { cx, cy } = state;
+    const { width: iw, height: ih } = getInfo(state);
     switch (e.type) {
       case 'mousedown':
-        eventData.active = true;
         ctrlKey = e.ctrlKey;
         if (!ctrlKey) {
-          eventData.offsetX = e.offsetX - state.event.cx;
-          eventData.offsetY = e.offsetY - state.event.cy;
+          if (e.offsetX > cx && e.offsetY > cy && e.offsetX < cx + iw && e.offsetY < cy + ih) {
+            // 在图片范围内
+            eventData.active = true;
+            eventData.offsetX = e.offsetX - cx;
+            eventData.offsetY = e.offsetY - cy;
+            this.canvas.style.cursor = 'move';
+          }
         } else {
+          // 按下ctrl键
+          eventData.active = true;
           eventData.offsetX = e.offsetX;
           eventData.offsetY = e.offsetY;
         }
         break;
       case 'mouseout':
       case 'mouseup':
-        eventData.active = false;
+        if (eventData.active) {
+          this.canvas.style.cursor = 'default';
+          eventData.active = false;
+        }
         break;
       case 'mousemove':
         if (eventData.active) {
           if (ctrlKey) {
-            const ratio = state.viewScale * state.scale;
-            const { cx, cy } = state.event;
-            const [ iw, ih ] = state.angle === .5 || state.angle === 1.5 ? [ state.height * ratio, state.width * ratio ] : [ state.width * ratio, state.height * ratio ];
             let x = Math.max(cx, Math.min(e.offsetX, eventData.offsetX));
             let y = Math.max(cy, Math.min(e.offsetY, eventData.offsetY));
             let width = Math.min(cx + iw, Math.max(e.offsetX, eventData.offsetX)) - x;
@@ -55,8 +63,8 @@
               stateChange(state, 'range');
             }
           } else {
-            state.event.cx = e.offsetX - eventData.offsetX;
-            state.event.cy = e.offsetY - eventData.offsetY;
+            state.cx = e.offsetX - eventData.offsetX;
+            state.cy = e.offsetY - eventData.offsetY;
           }
           draw(this.canvas, state, this.img);
         }
@@ -71,29 +79,16 @@
           1); // 0 上(缩小，scale变小) 1 下(放大，scale变大)
         eventData.offsetX = e.offsetX;
         eventData.offsetY = e.offsetY;
-        switch (state.angle) {
-          case .5:
-            state.offsetX = e.offsetY;
-            state.offsetY = this.canvas.width - e.offsetX;
-            break;
-          case 1.5:
-            state.offsetX = this.canvas.height - e.offsetY;
-            state.offsetY = e.offsetX;
-            break;
-          case 1:
-            state.offsetX = this.canvas.width - e.offsetX;
-            state.offsetY = this.canvas.height - e.offsetY;
-            break;
-          default:
-            state.offsetX = e.offsetX;
-            state.offsetY = e.offsetY;
-        }
-        this.scale(state.viewScale + (direct ? 0.1 : -0.1));
-        state.offsetX = state.offsetY = 0;
+        this.scale(state.viewScale + (direct ? 0.1 : -0.1), 1);
         break;
     }
   }
-  function stateChange(state, type) {
+  function getInfo (state) {
+    const ratio = state.viewScale * state.scale;
+    const [width, height] = state.angle === .5 || state.angle === 1.5 ? [state.height * ratio, state.width * ratio] : [state.width * ratio, state.height * ratio];
+    return { width, height, ratio };
+  }
+  function stateChange (state, type) {
     if (state.onChange) {
       const range = Object.assign({}, state.range);
       let width = (state.width * state.scale) >> 0;
@@ -111,27 +106,27 @@
     switch (pos) {
       case 'top':
       case 1:
-        state.event.cy = 0;
+        state.cy = 0;
         break;
       case 'right':
       case 2:
-        state.event.cx = canvas.width - (!state.angle || state.angle === 1 ? width : height);
+        state.cx = canvas.width - (!state.angle || state.angle === 1 ? width : height);
         break;
       case 'bottom':
       case 3:
-        state.event.cy = canvas.height - (!state.angle || state.angle === 1 ? height : width);
+        state.cy = canvas.height - (!state.angle || state.angle === 1 ? height : width);
         break;
       case 'left':
       case 4:
-        state.event.cx = 0;
+        state.cx = 0;
         break;
       default: // center
         if (!state.angle || state.angle === 1) {
-          state.event.cx = (canvas.width - width) / 2;
-          state.event.cy = (canvas.height - height) / 2;
+          state.cx = (canvas.width - width) / 2;
+          state.cy = (canvas.height - height) / 2;
         } else {
-          state.event.cx = (canvas.width - height) / 2;
-          state.event.cy = (canvas.height - width) / 2;
+          state.cx = (canvas.width - height) / 2;
+          state.cy = (canvas.height - width) / 2;
         }
     }
   }
@@ -139,7 +134,7 @@
    * 画矩形选择框
    */
   function drawRect (context, state) {
-    const { cx, cy } = state.event;
+    const { cx, cy } = state;
     let { x, y, width, height } = state.range;
     if (width && height) {
       const ratio = state.viewScale;
@@ -167,22 +162,23 @@
       const ratio = state.viewScale * state.scale;
       const width = state.width * ratio;
       const height = state.height * ratio;
+      let cx, cy;
       switch (state.angle) {
         case 0.5: // 顺时针90°
-          state.cx = state.event.cy;
-          state.cy = canvas.width - state.event.cx - height;
+          cx = state.cy;
+          cy = canvas.width - state.cx - height;
           break;
         case 1.5: // 逆时针90°
-          state.cx = canvas.height - state.event.cy - width;
-          state.cy = state.event.cx;
+          cx = canvas.height - state.cy - width;
+          cy = state.cx;
           break;
         case 1: // 180°
-          state.cx = canvas.width - state.event.cx - width;
-          state.cy = canvas.height - state.event.cy - height;
+          cx = canvas.width - state.cx - width;
+          cy = canvas.height - state.cy - height;
           break;
         default: // 0°
-          state.cx = state.event.cx;
-          state.cy = state.event.cy;
+          cx = state.cx;
+          cy = state.cy;
       }
       // 变换坐标轴
       context.save();
@@ -198,7 +194,7 @@
         }
       }
       // console.log(state.x, state.y, state.width, state.height, cx, cy, width, height);
-      context.drawImage(img, state.x, state.y, state.width, state.height, state.cx, state.cy, width, height);
+      context.drawImage(img, state.x, state.y, state.width, state.height, cx, cy, width, height);
       context.restore();
       /*绘制图片结束*/
       // 画矩形选择框
@@ -252,14 +248,8 @@
         scale: 1, // 调整高宽时和原图比例（resize）
         angle: 0, // 旋转角度（rotate）
         viewScale: 0, // 在画布上的显示比例（scale）
-        offsetX: 0, // 坐标变换后事件x轴位置
-        offsetY: 0, // 坐标变换后事件y轴位置
-        cx: 0, // 图片在画布上x轴位置（变换后坐标系统）
-        cy: 0, // 图片在画布上y轴位置（变换后坐标系统）
-        event: {
-          cx: 0, // 图片在画布上x轴位置（原始坐标系统）
-          cy: 0, // 图片在画布上y轴位置（原始坐标系统）
-        },
+        cx: 0, // 图片在画布上x轴位置
+        cy: 0, // 图片在画布上y轴位置
         range: {
           x: 0, // 选择范围（setRange）在图片上的x轴位置（原始坐标系统）
           y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
@@ -369,13 +359,13 @@
         width >>= 0;
         const rx = (width - this.canvas.width) >> 1;
         this.canvas.width = width;
-        state.event.cx += rx;
+        state.cx += rx;
       }
       if (height) {
         height >>= 0;
         const ry = (height - this.canvas.height) >> 1;
         this.canvas.height = height;
-        state.event.cy += ry;
+        state.cy += ry;
       }
       draw(this.canvas, state, this.img);
       return this;
@@ -391,8 +381,6 @@
       state.angle = 0;
       state.cx = 0;
       state.cy = 0;
-      state.offsetX = 0;
-      state.offsetY = 0;
       state.viewScale = Math.min(1,
         this.canvas.width / state.width,
         this.canvas.height / state.height
@@ -469,7 +457,7 @@
       })
     }
     // 视图缩放
-    scale (s) {
+    scale (s, wheel) {
       if (!this.img) return this;
       const state = data[this.id];
       // 放大比例不能小于1或大于10
@@ -480,24 +468,25 @@
       } else {
         state.viewScale = s;
       }
-      const ratio = state.scale * viewScale;
-      if ((state.offsetX || state.offsetY)
-          && state.offsetX - state.cx > 0
-          && state.offsetY - state.cy > 0
-          && state.offsetX < state.cx + state.width * ratio
-          && state.offsetY < state.cy + state.height * ratio) {
+      const { cx, cy } = state;
+      const { width, height } = getInfo(state);
+      if (wheel
+          && eventData.offsetX > cx
+          && eventData.offsetY > cy
+          && eventData.offsetX < cx + width
+          && eventData.offsetY < cy + height) {
         // 在图片范围内，以鼠标位置为中心
-        state.event.cx -= ((eventData.offsetX - state.event.cx) / viewScale) * scale;
-        state.event.cy -= ((eventData.offsetY - state.event.cy) / viewScale) * scale;
+        state.cx -= ((eventData.offsetX - state.cx) / viewScale) * scale;
+        state.cy -= ((eventData.offsetY - state.cy) / viewScale) * scale;
       } else {
         // 以图片在画布范围内中心点
         const ratio = state.scale * scale * .5;
         if (state.angle === .5 || state.angle === 1.5) {
-          state.event.cx -= state.height * ratio;
-          state.event.cy -= state.width * ratio;
+          state.cx -= state.height * ratio;
+          state.cy -= state.width * ratio;
         } else {
-          state.event.cx -= state.width * ratio;
-          state.event.cy -= state.height * ratio;
+          state.cx -= state.width * ratio;
+          state.cy -= state.height * ratio;
         }
       }
       this.canvas && draw(this.canvas, state, this.img);
@@ -548,20 +537,20 @@
       // 让图片停留在原点
       switch (state.angle) {
         case .5:
-          state.event.cx += (state.height + state.y - height - y) * ratio;
-          state.event.cy += (x - state.x) * ratio;
+          state.cx += (state.height + state.y - height - y) * ratio;
+          state.cy += (x - state.x) * ratio;
           break;
         case 1:
-          state.event.cx += (state.width + state.x - width - x) * ratio;
-          state.event.cy += (state.height + state.y - height - y) * ratio;
+          state.cx += (state.width + state.x - width - x) * ratio;
+          state.cy += (state.height + state.y - height - y) * ratio;
           break;
         case 1.5:
-          state.event.cx += (y - state.y) * ratio;
-          state.event.cy += (state.width + state.x - width - x) * ratio;
+          state.cx += (y - state.y) * ratio;
+          state.cy += (state.width + state.x - width - x) * ratio;
           break;
         default:
-          state.event.cx += (x - state.x) * ratio;
-          state.event.cy += (y - state.y) * ratio;
+          state.cx += (x - state.x) * ratio;
+          state.cy += (y - state.y) * ratio;
       }
       Object.assign(state, { x, y, width, height });
       this.clean(1);
@@ -619,12 +608,12 @@
         case .5:
         case 1.5:
         case -.5:
-          state.event.cx -= (ih - iw) * ratio;
-          state.event.cy -= (iw - ih) * ratio;
+          state.cx -= (ih - iw) * ratio;
+          state.cy -= (iw - ih) * ratio;
           break;
         default:
-          state.event.cx -= (iw - ih) * ratio;
-          state.event.cy -= (ih - iw) * ratio;
+          state.cx -= (iw - ih) * ratio;
+          state.cy -= (ih - iw) * ratio;
       }
       if (state.range.width) {
         let { x, y, width, height } = state.range;
