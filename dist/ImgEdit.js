@@ -7,13 +7,13 @@
   /*
    * 图片编辑器（图片编辑而不是图片合成）
    */
-  const undefined$1 = void 0;
   const data = {};
   const eventData = {
     active: false, // 点击事件开始标记
     offsetX: 0, // 点击事件开始x轴位置
     offsetY: 0 // 点击事件开始y轴位置
   };
+  const eventNames = ['mousewheel', 'mousedown', 'mouseup', 'mouseout', 'mousemove'];
   let ctrlKey = false; // ctrl键按下标记
   // 移动事件
   function moveEvent(e) {
@@ -203,8 +203,8 @@
     // if (typeof canvas[method] !== 'function') return false;
     const ctx = canvas.getContext("2d");
     const { x, y, width, height } = state;
-    const dWidth = canvas.width = Math.floor(width * state.scale);
-    const dHeight = canvas.height = Math.floor(height * state.scale);
+    const dWidth = canvas.width = width * state.scale;
+    const dHeight = canvas.height = height * state.scale;
     if (state.angle) {
       if (state.angle !== 1) {
         // state.angle = .5, 1.5
@@ -222,7 +222,7 @@
           ctx.translate(-canvas.width, -canvas.height);
       }
     }
-    ctx.drawImage(img, Math.floor(x), Math.floor(y), Math.floor(width), Math.floor(height), 0, 0, dWidth, dHeight);
+    ctx.drawImage(img, x, y, width, height, 0, 0, dWidth, dHeight);
     return canvas[method](...args);
   }
   class ImgEdit {
@@ -282,46 +282,20 @@
         this.canvas = document.querySelector(option);
       if (this.canvas) {
         const event = moveEvent.bind(this);
-        this.canvas.addEventListener('mousewheel', event, false);
-        this.canvas.addEventListener('mousedown', event, false);
-        this.canvas.addEventListener('mouseup', event, false);
-        this.canvas.addEventListener('mouseout', event, false);
-        this.canvas.addEventListener('mousemove', event, false);
+        eventNames.forEach((name) => {
+          this.canvas.addEventListener(name, event, false);
+        });
         state.moveEvent = event;
         draw(this.canvas, state);
       }
     }
     destroy () {
       if (this.canvas) {
-        this.canvas.removeEventListener('mousewheel', data[this.id].moveEvent, false);
-        this.canvas.removeEventListener('mousedown', data[this.id].moveEvent, false);
-        this.canvas.removeEventListener('mouseup', data[this.id].moveEvent, false);
-        this.canvas.removeEventListener('mouseout', data[this.id].moveEvent, false);
-        this.canvas.removeEventListener('mousemove', data[this.id].moveEvent, false);
+        eventNames.forEach((name) => {
+          this.canvas.removeEventListener(name, data[this.id].moveEvent);
+        });
       }
-      this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = data[this.id].before = data[this.id].after = this.input = this.canvas = null;
-    }
-    // 监听输入源(<input type=file|text>)变化
-    listen(el, hook) {
-      data[this.id].inputListener = typeof hook === 'function' ? (e) => {
-        const res = hook(e);
-        if (res === undefined$1 || res) {
-          this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
-        }
-      } : (e) => {
-        this.open(/file/i.test(e.target.type) ? e.target.files[0] : e.target.value);
-      };
-      this.input = typeof el === 'object' && 'addEventListener' in el ? el : document.querySelector(el);
-      this.input.addEventListener('change', data[this.id].inputListener);
-      return this;
-    }
-    // 删除输入源监听
-    unlisten () {
-      if (this.input) {
-        this.input.removeEventListener('change', data[this.id].inputListener);
-        data[this.id].inputListener = null;
-      }
-      return this;
+      this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = data[this.id].before = data[this.id].after = this.canvas = null;
     }
     before (fn) {
       data[this.id].before = typeof fn === 'function' ? fn : null;

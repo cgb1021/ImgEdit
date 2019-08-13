@@ -24,16 +24,6 @@ const edit = new ImgEdit({
  */
 edit.destroy()
 /*
- * 监听输入源(<input type=file|text>)变化
- * @param {object/string} el input元素或者css选择器
- * @param {function} hook 监听方法
- */
-edit.listen(el, hook)
-/*
- * 移除input监听事件
- */
-edit.unlisten()
-/*
  * 清空img
  */
 edit.close()
