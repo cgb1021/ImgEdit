@@ -7,7 +7,6 @@
   /*
    * 图片编辑器（图片编辑而不是图片合成）
    */
-  // const undefined = void 0;
   const data = {};
   const eventData = {
     active: false, // 点击事件开始标记
@@ -293,11 +292,10 @@
         scale = height / sHeight;
       }
       // 确保scale和viewScale成比例
-      sprite.scale *= scale;
+      this.scale *= scale;
       return scale;
     }
     rotate (angle, viewScale) {
-      const sprite = state.sprite;
       // 90,180,270转.5,1,1.5
       if (angle > 2 || angle < -2) angle = angle / 180;
       angle += this.angle;
