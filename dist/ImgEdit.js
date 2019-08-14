@@ -225,6 +225,25 @@
     ctx.drawImage(img, x, y, width, height, 0, 0, dWidth, dHeight);
     return canvas[method](...args);
   }
+  class Sprite {
+    constructor (img, canv) {
+      console.log(img);
+      this.img = img;
+      this.canvas = canv;
+      this.init();
+    }
+    init () {
+      this.width = this.img.width; // 图片显示范围宽度（cut）
+      this.height = this.img.height; // 图片显示范围高度（cut）
+      this.x = 0; // 图片显示范围x轴位置（cut）
+      this.y = 0; // 图片显示范围y轴位置（cut）
+      this.scale = 1; // 调整高宽时和原图比例（resize）
+      this.angle = 0; // 旋转角度（rotate）
+      this.cx = 0; // 图片在画布上x轴位置
+      this.cy = 0; // 图片在画布上y轴位置
+      this.zIndex = 0; // 图层深度（越大图层越高）
+    }
+  }
   class ImgEdit {
     constructor (option) {
       const id = Symbol();
@@ -233,17 +252,8 @@
         writable: false
       });
       this.canvas = null;
-      this.img = null, // new Image()
       data[id] = {
-        width: 0, // 图片显示范围宽度（cut）
-        height: 0, // 图片显示范围高度（cut）
-        x: 0, // 图片显示范围x轴位置（cut）
-        y: 0, // 图片显示范围y轴位置（cut）
-        scale: 1, // 调整高宽时和原图比例（resize）
-        angle: 0, // 旋转角度（rotate）
-        viewScale: 0, // 在画布上的显示比例（scale）
-        cx: 0, // 图片在画布上x轴位置
-        cy: 0, // 图片在画布上y轴位置
+        sprite: null,
         range: {
           x: 0, // 选择范围（setRange）在图片上的x轴位置（原始坐标系统）
           y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
@@ -295,7 +305,7 @@
           this.canvas.removeEventListener(name, data[this.id].moveEvent);
         });
       }
-      this.img = data[this.id] = data[this.id].moveEvent = data[this.id].onChange = data[this.id].before = data[this.id].after = this.canvas = null;
+      data[this.id] = data[this.id].sprite = data[this.id].moveEvent = data[this.id].onChange = data[this.id].before = data[this.id].after = this.canvas = null;
     }
     before (fn) {
       data[this.id].before = typeof fn === 'function' ? fn : null;
@@ -338,21 +348,29 @@
       draw(this.canvas, state, this.img);
       return this;
     }
+    toDataURL(mime = 'image/jpeg', quality = .8) {
+      if (!this.img) return '';
+      return save(this.img, data[this.id], 'toDataURL', mime, quality);
+    }
+    toBlob(mime = 'image/jpeg', quality = .8) {
+      return new Promise((resolve, reject) => {
+        if (!this.img) {
+          reject(new Error(this.img));
+        } else {
+          save(this.img, data[this.id], 'toBlob', (res) => {
+            resolve(res);
+          }, mime, quality);
+        }
+      })
+    }
     // 重置
     reset (noDraw) {
       const state = data[this.id];
-      state.width = this.img.width;
-      state.height = this.img.height;
-      state.x = 0;
-      state.y = 0;
-      state.scale = 1;
-      state.angle = 0;
-      state.cx = 0;
-      state.cy = 0;
-      state.viewScale = Math.min(1,
-        this.canvas.width / state.width,
-        this.canvas.height / state.height
-      );
+      !noDraw && state.sprite.init();
+      this.viewScale = Math.min(1,
+        this.canvas.width / state.sprite.width,
+        this.canvas.height / state.sprite.height
+      ); // 在画布上的显示比例（scale）
       state.range.width = state.range.height = state.range.x = state.range.y = 0;
       align('center', this.canvas, state);
       if (!noDraw) {
@@ -382,20 +400,20 @@
      * @return {object} Promise
      */
     async open (file) {
+      let img;
       try {
         if (file instanceof Image) {
-          if (/^blob:/.test(file.src)) this.img = file;
-          else this.img = await loadImg(file.src);
+          if (/^blob:/.test(file.src)) img = file;
+          else img = await loadImg(file.src);
         } else {
-          this.img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
+          img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
         }
       } catch(e) {
         stateChange(null, 'error');
         return this;
       }
       const state = data[this.id];
-      state.width = this.img.width;
-      state.height = this.img.height;
+      state.sprite = new Sprite(img, this.canvas);
       if (this.canvas) {
         this.reset(1);
         draw(this.canvas, state, this.img);
@@ -408,21 +426,6 @@
       this.canvas && draw(this.canvas, state, this.img);
       stateChange(state, 'draw');
       return this;
-    }
-    toDataURL (mime = 'image/jpeg', quality = .8) {
-      if (!this.img) return '';
-      return save(this.img, data[this.id], 'toDataURL', mime, quality);
-    }
-    toBlob (mime = 'image/jpeg', quality = .8) {
-      return new Promise((resolve, reject) => {
-        if (!this.img) {
-          reject(new Error(this.img));
-        } else {
-          save(this.img, data[this.id], 'toBlob', (res) => {
-            resolve(res);
-          }, mime, quality);
-        }
-      })
     }
     // 视图缩放
     scale (s, wheel) {
