@@ -18,7 +18,7 @@ function moveEvent(e) {
   const sprite = state.sprite;
   if (!sprite) return;
   const { cx, cy } = sprite;
-  const { width: iw, height: ih } = sprite.getViewSize(state)
+  const { width: iw, height: ih } = sprite.getViewSize(state.viewScale)
   switch (e.type) {
     case 'mousedown':
       ctrlKey = e.ctrlKey;
@@ -86,32 +86,6 @@ function stateChange (state, type) {
     state.onChange({ width: width >> 0, height: height >> 0, scale: window.parseFloat(state.viewScale.toFixed(2)), range, type });
   }
 }
-// 设置对齐
-function align (pos, canvas, state) {
-  const sprite = state.sprite;
-  const { width, height } = sprite.getViewSize(state);
-  switch (pos) {
-    case 'top':
-    case 1:
-      sprite.cy = 0;
-      break;
-    case 'right':
-    case 2:
-      sprite.cx = canvas.width - width;
-      break;
-    case 'bottom':
-    case 3:
-      sprite.cy = canvas.height - height;
-      break;
-    case 'left':
-    case 4:
-      sprite.cx = 0;
-      break;
-    default: // center
-      sprite.cx = (canvas.width - width) / 2;
-      sprite.cy = (canvas.height - height) / 2;
-  }
-}
 /* 
  * 画矩形选择框
  */
@@ -141,44 +115,7 @@ function draw (canvas, state) {
   state.before && state.before(context);
   // 画图片
   if (sprite) {
-    // 坐标转换
-    const ratio = state.viewScale * sprite.scale;
-    const width = sprite.width * ratio;
-    const height = sprite.height * ratio;
-    let cx, cy;
-    switch (sprite.angle) {
-      case 0.5: // 顺时针90°
-        cx = sprite.cy;
-        cy = canvas.width - sprite.cx - height;
-        break;
-      case 1.5: // 逆时针90°
-        cx = canvas.height - sprite.cy - width;
-        cy = sprite.cx;
-        break;
-      case 1: // 180°
-        cx = canvas.width - sprite.cx - width;
-        cy = canvas.height - sprite.cy - height;
-        break;
-      default: // 0°
-        cx = sprite.cx;
-        cy = sprite.cy;
-    }
-    // 变换坐标轴
-    context.save();
-    if (sprite.angle) {
-      const hWidth = canvas.width >> 1;
-      const hHeight = canvas.height >> 1;
-      context.translate(hWidth, hHeight);
-      context.rotate(window.Math.PI * sprite.angle);
-      if (sprite.angle !== 1) {
-        context.translate(-hHeight, -hWidth);
-      } else {
-        context.translate(-hWidth, -hHeight);
-      }
-    }
-    // console.log(state.x, state.y, state.width, state.height, cx, cy, width, height);
-    context.drawImage(sprite.img, sprite.x, sprite.y, sprite.width, sprite.height, cx, cy, width, height);
-    context.restore();
+    sprite.draw(context, state.viewScale);
     /*绘制图片结束*/
     // 画矩形选择框
     if (state.range.width && state.range.height) {
@@ -239,14 +176,170 @@ class Sprite {
       height
     };
   }
-  getViewSize (state) {
-    const ratio = state.viewScale * this.scale;
+  getViewSize (viewScale) {
+    const ratio = viewScale * this.scale;
     const [width, height] = this.angle === .5 || this.angle === 1.5 ? [this.height * ratio, this.width * ratio] : [this.width * ratio, this.height * ratio];
     return {
       width,
       height,
       ratio
     };
+  }
+  draw (context, viewScale) {
+    // 坐标转换
+    const canvas = context.canvas;
+    const ratio = viewScale * this.scale;
+    const width = this.width * ratio;
+    const height = this.height * ratio;
+    let cx, cy;
+    switch (this.angle) {
+      case 0.5: // 顺时针90°
+        cx = this.cy;
+        cy = canvas.width - this.cx - height;
+        break;
+      case 1.5: // 逆时针90°
+        cx = canvas.height - this.cy - width;
+        cy = this.cx;
+        break;
+      case 1: // 180°
+        cx = canvas.width - this.cx - width;
+        cy = canvas.height - this.cy - height;
+        break;
+      default: // 0°
+        cx = this.cx;
+        cy = this.cy;
+    }
+    // 变换坐标轴
+    context.save();
+    if (this.angle) {
+      const hWidth = canvas.width >> 1;
+      const hHeight = canvas.height >> 1;
+      context.translate(hWidth, hHeight);
+      context.rotate(window.Math.PI * this.angle);
+      if (this.angle !== 1) {
+        context.translate(-hHeight, -hWidth);
+      } else {
+        context.translate(-hWidth, -hHeight);
+      }
+    }
+    // console.log(state.x, state.y, state.width, state.height, cx, cy, width, height);
+    context.drawImage(this.img, this.x, this.y, this.width, this.height, cx, cy, width, height);
+    context.restore();
+  }
+  cut (rw, rh, rx, ry, viewScale) {
+    rw /= this.scale;
+    rh /= this.scale;
+    rx /= this.scale;
+    ry /= this.scale;
+    switch (this.angle) {
+      case .5:
+      case 1.5:
+        if (this.angle === .5) {
+          [rx, ry] = [ry, this.height - rx - rw];
+        } else {
+          [rx, ry] = [this.width - ry - rh, rx];
+        }
+        [rw, rh] = [rh, rw];
+        break;
+      case 1:
+        [rx, ry] = [this.width - rw - rx, this.height - rh - ry];
+        break;
+      default: ;
+    }
+    if (rx >= this.width || ry >= this.height)
+      return;
+    let x, y, width, height;
+    x = this.x + Math.max(rx, 0);
+    y = this.y + Math.max(ry, 0);
+    width = Math.min(Math.min(rx + rw, this.width) /*结束点*/ - Math.max(0, rx) /*起点*/ , this.width);
+    height = Math.min(Math.min(ry + rh, this.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , this.height);
+    const ratio = viewScale * this.scale;
+    // 让图片停留在原点
+    switch (this.angle) {
+      case .5:
+        this.cx += (this.height + this.y - height - y) * ratio;
+        this.cy += (x - this.x) * ratio;
+        break;
+      case 1:
+        this.cx += (this.width + this.x - width - x) * ratio;
+        this.cy += (this.height + this.y - height - y) * ratio;
+        break;
+      case 1.5:
+        this.cx += (y - this.y) * ratio;
+        this.cy += (this.width + this.x - width - x) * ratio;
+        break;
+      default:
+        this.cx += (x - this.x) * ratio;
+        this.cy += (y - this.y) * ratio;
+    }
+    Object.assign(this, { x, y, width, height });
+  }
+  resize (width, height) {
+    const { width: sWidth, height: sHeight } = this.getSize();
+    if (width >= sWidth && height >= sHeight)
+      return 0;
+    let scale;
+    if (width && height) {
+      scale = Math.min(width / sWidth, height / sHeight);
+    } else if (width) {
+      scale = width / sWidth;
+    } else {
+      scale = height / sHeight;
+    }
+    // 确保scale和viewScale成比例
+    sprite.scale *= scale;
+    return scale;
+  }
+  rotate (angle, viewScale) {
+    const sprite = state.sprite;
+    // 90,180,270转.5,1,1.5
+    if (angle > 2 || angle < -2) angle = angle / 180;
+    angle += this.angle;
+    angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
+    // 只接受0,.5,1,1.5
+    if (angle % .5 || angle === this.angle) return 0;
+    const ratio = viewScale * .5;
+    const diff = angle - this.angle;
+    const { width, height } = this.getSize();
+    switch (diff) {
+      case -1.5:
+      case .5:
+      case 1.5:
+      case -.5:
+        this.cx -= (height - width) * ratio;
+        this.cy -= (width - height) * ratio;
+        break;
+      default:
+        this.cx -= (width - height) * ratio;
+        this.cy -= (height - width) * ratio;
+    }
+    this.angle = angle;
+    return diff;
+  }
+  // 设置对齐
+  align (pos, canvas, viewScale) {
+    const { width, height } = this.getViewSize(viewScale);
+    switch (pos) {
+      case 'top':
+      case 1:
+        this.cy = 0;
+        break;
+      case 'right':
+      case 2:
+        this.cx = canvas.width - width;
+        break;
+      case 'bottom':
+      case 3:
+        this.cy = canvas.height - height;
+        break;
+      case 'left':
+      case 4:
+        this.cx = 0;
+        break;
+      default: // center
+        this.cx = (canvas.width - width) / 2;
+        this.cy = (canvas.height - height) / 2;
+    }
   }
 }
 class ImgEdit {
@@ -378,7 +471,7 @@ class ImgEdit {
       this.canvas.height / state.sprite.height
     ); // 在画布上的显示比例（scale）
     state.range.width = state.range.height = state.range.x = state.range.y = 0;
-    align('center', this.canvas, state);
+    state.sprite.align('center', this.canvas, state.viewScale);
     if (!noDraw) {
       this.canvas && draw(this.canvas, state);
       stateChange(state, 'reset');
@@ -441,7 +534,7 @@ class ImgEdit {
     // 放大比例不能小于1或大于10
     const viewScale = state.viewScale;
     const scale = s - viewScale;
-    const { width, height } = sprite.getViewSize(state);
+    const { width, height } = sprite.getViewSize(state.viewScale);
     if (s < .1 || s > 10) {
       return this;
     } else {
@@ -486,52 +579,7 @@ class ImgEdit {
       ry = ry >> 0;
     }
     if (!rw || !rh) return this;
-    rw = rw / sprite.scale;
-    rh = rh / sprite.scale;
-    rx = rx / sprite.scale;
-    ry = ry / sprite.scale;
-    switch (sprite.angle) {
-      case .5:
-      case 1.5:
-        if (sprite.angle === .5) {
-          [rx, ry] = [ry, sprite.height - rx - rw];
-        } else {
-          [rx, ry] = [sprite.width - ry - rh, rx];
-        }
-        [rw, rh] = [rh, rw];
-        break;
-      case 1:
-        [rx, ry] = [sprite.width - rw - rx, sprite.height - rh - ry];
-        break;
-      default: ;
-    }
-    if (rx >= sprite.width || ry >= sprite.height)
-      return this;
-    let x, y, width, height;
-    x = sprite.x + Math.max(rx, 0);
-    y = sprite.y + Math.max(ry, 0);
-    width = Math.min(Math.min(rx + rw, sprite.width) /*结束点*/ - Math.max(0, rx) /*起点*/ , sprite.width);
-    height = Math.min(Math.min(ry + rh, sprite.height) /*结束点*/ - Math.max(0, ry) /*起点*/ , sprite.height);
-    const ratio = state.viewScale * sprite.scale;
-    // 让图片停留在原点
-    switch (sprite.angle) {
-      case .5:
-        sprite.cx += (sprite.height + sprite.y - height - y) * ratio;
-        sprite.cy += (x - sprite.x) * ratio;
-        break;
-      case 1:
-        sprite.cx += (sprite.width + sprite.x - width - x) * ratio;
-        sprite.cy += (sprite.height + sprite.y - height - y) * ratio;
-        break;
-      case 1.5:
-        sprite.cx += (y - sprite.y) * ratio;
-        sprite.cy += (sprite.width + sprite.x - width - x) * ratio;
-        break;
-      default:
-        sprite.cx += (x - sprite.x) * ratio;
-        sprite.cy += (y - sprite.y) * ratio;
-    }
-    Object.assign(sprite, { x, y, width, height });
+    sprite.cut(rw, rh, rx, ry, state.viewScale);
     this.clean(1);
     this.canvas && draw(this.canvas, state);
     stateChange(state, 'cut');
@@ -541,20 +589,8 @@ class ImgEdit {
   resize (width, height) {
     const state = data[this.id];
     if (!state.sprite) return this;
-    const sprite = state.sprite;
-    const { width: sWidth, height: sHeight } = sprite.getSize();
-    if (width >= sWidth && height >= sHeight)
-      return this;
-    let scale;
-    if (width && height) {
-      scale = Math.min(width / sWidth, height / sHeight);
-    } else if (width) {
-      scale = width / sWidth;
-    } else {
-      scale = height / sHeight;
-    }
-    // 确保scale和viewScale成比例
-    sprite.scale *= scale;
+    const scale = state.sprite.resize(width, height);
+    if (!scale) return this;
     state.viewScale /= scale;
     if (state.range.width) {
       state.range.width = (state.range.width * scale) >> 0;
@@ -571,27 +607,9 @@ class ImgEdit {
     const state = data[this.id];
     if (!state.sprite || !angle) return this;
     const sprite = state.sprite;
-    // 90,180,270转.5,1,1.5
-    if (angle > 2 || angle < -2) angle = angle / 180;
-    angle += sprite.angle;
-    angle = angle < 0 ? 2 + (angle % 2) : angle % 2;
-    // 只接受0,.5,1,1.5
-    if (angle % .5 || angle === sprite.angle) return this;
-    const ratio = state.viewScale * .5;
-    const diff = angle - sprite.angle;
     const { width: iw, height: ih } = sprite.getSize();
-    switch (diff) {
-      case -1.5:
-      case .5:
-      case 1.5:
-      case -.5:
-        sprite.cx -= (ih - iw) * ratio;
-        sprite.cy -= (iw - ih) * ratio;
-        break;
-      default:
-        sprite.cx -= (iw - ih) * ratio;
-        sprite.cy -= (ih - iw) * ratio;
-    }
+    const diff = sprite.rotate(angle, state.viewScale);
+    if (!diff) return this;
     if (state.range.width) {
       let { x, y, width, height } = state.range;
       switch (diff) {
@@ -608,7 +626,6 @@ class ImgEdit {
       }
       Object.assign(state.range, { x, y, width, height });
     }
-    sprite.angle = angle;
     this.canvas && draw(this.canvas, state);
     stateChange(state, 'rotate');
     return this;
@@ -636,7 +653,7 @@ class ImgEdit {
   align (pos) {
     const state = data[this.id];
     if (!state.sprite) return this;
-    align(pos, this.canvas, state);
+    state.sprite.align(pos, this.canvas, state.viewScale);
     this.canvas && draw(this.canvas, state);
     stateChange(state, 'align');
     return this;
