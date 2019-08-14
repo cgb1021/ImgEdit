@@ -1,7 +1,7 @@
 /*
  * 图片编辑器（图片编辑而不是图片合成）
  */
-const undefined = void 0;
+// const undefined = void 0;
 const data = {};
 const eventData = {
   active: false, // 点击事件开始标记
@@ -18,7 +18,7 @@ function moveEvent(e) {
   const sprite = state.sprite;
   if (!sprite) return;
   const { cx, cy } = sprite;
-  const { width: iw, height: ih } = sprite.getSize(state)
+  const { width: iw, height: ih } = sprite.getViewSize(state)
   switch (e.type) {
     case 'mousedown':
       ctrlKey = e.ctrlKey;
@@ -82,19 +82,14 @@ function moveEvent(e) {
 function stateChange (state, type) {
   if (state.onChange) {
     const range = Object.assign({}, state.range);
-    const sprite = state.sprite;
-    let width = (sprite.width * sprite.scale) >> 0;
-    let height = (sprite.height * sprite.scale) >> 0;
-    if (sprite.angle && sprite.angle !== 1) {
-      [width, height] = [height, width];
-    }
-    state.onChange({ width, height, scale: window.parseFloat(state.viewScale.toFixed(2)), range, type });
+    const { width, height } = state.sprite.getSize();
+    state.onChange({ width: width >> 0, height: height >> 0, scale: window.parseFloat(state.viewScale.toFixed(2)), range, type });
   }
 }
 // 设置对齐
 function align (pos, canvas, state) {
   const sprite = state.sprite;
-  const { width, height } = sprite.getSize(state);
+  const { width, height } = sprite.getViewSize(state);
   switch (pos) {
     case 'top':
     case 1:
@@ -198,8 +193,9 @@ function save (state, method, ...args) {
   const ctx = canvas.getContext("2d");
   const sprite = state.sprite;
   const { x, y, width, height } = sprite;
-  const dWidth = canvas.width = width * sprite.scale;
-  const dHeight = canvas.height = height * sprite.scale;
+  const { width: dWidth, height: dHeight } = sprite.getSize();
+  canvas.width = dWidth;
+  canvas.height = dHeight;
   if (sprite.angle) {
     if (sprite.angle !== 1) {
       // state.angle = .5, 1.5
@@ -236,13 +232,14 @@ class Sprite {
     this.cy = 0; // 图片在画布上y轴位置
     this.zIndex = 0; // 图层深度（越大图层越高）
   }
-  width () {
-    return (this.width * this.scale) >> 0;
+  getSize () {
+    const [width, height] = this.angle === .5 || this.angle === 1.5 ? [this.height * this.scale, this.width * this.scale] : [this.width * this.scale, this.height * this.scale];
+    return {
+      width,
+      height
+    };
   }
-  height () {
-    return (this.height * this.scale) >> 0;
-  }
-  getSize (state) {
+  getViewSize (state) {
     const ratio = state.viewScale * this.scale;
     const [width, height] = this.angle === .5 || this.angle === 1.5 ? [this.height * ratio, this.width * ratio] : [this.width * ratio, this.height * ratio];
     return {
@@ -330,11 +327,11 @@ class ImgEdit {
   }
   // 获取图片宽度
   width () {
-    return data[this.id].sprite.width();
+    return data[this.id].sprite.getSize()['width'];
   }
   // 获取图片高度
   height () {
-    return data[this.id].sprite.height();
+    return data[this.id].sprite.getSize()['height'];
   }
   // 调整canvas尺寸
   canvasResize (width, height) {
@@ -444,7 +441,7 @@ class ImgEdit {
     // 放大比例不能小于1或大于10
     const viewScale = state.viewScale;
     const scale = s - viewScale;
-    const { width, height } = sprite.getSize(state);
+    const { width, height } = sprite.getViewSize(state);
     if (s < .1 || s > 10) {
       return this;
     } else {
@@ -545,11 +542,7 @@ class ImgEdit {
     const state = data[this.id];
     if (!state.sprite) return this;
     const sprite = state.sprite;
-    let sWidth = sprite.width * sprite.scale;
-    let sHeight = sprite.height * sprite.scale;
-    if (sprite.angle && sprite.angle !== 1) {
-      [sWidth, sHeight] = [sHeight, sWidth];
-    }
+    const { width: sWidth, height: sHeight } = sprite.getSize();
     if (width >= sWidth && height >= sHeight)
       return this;
     let scale;
@@ -586,7 +579,7 @@ class ImgEdit {
     if (angle % .5 || angle === sprite.angle) return this;
     const ratio = state.viewScale * .5;
     const diff = angle - sprite.angle;
-    const [iw, ih] = sprite.angle === .5 || sprite.angle === 1.5 ? [sprite.height * sprite.scale, sprite.width * sprite.scale] : [sprite.width * sprite.scale, sprite.height * sprite.scale];
+    const { width: iw, height: ih } = sprite.getSize();
     switch (diff) {
       case -1.5:
       case .5:
@@ -628,7 +621,9 @@ class ImgEdit {
     height >>= 0;
     x >>= 0;
     y >>= 0;
-    const [iw, ih] = sprite.angle === .5 || sprite.angle === 1.5 ? [(sprite.height * sprite.scale) >> 0, (sprite.width * sprite.scale) >> 0] : [(sprite.width * sprite.scale) >> 0, (sprite.height * sprite.scale) >> 0];
+    let { width: iw, height: ih } = sprite.getSize();
+    iw >>= 0;
+    ih >>= 0;
     if (width && height && width > 0 && height > 0 && (width < iw || height < ih) && x >= 0 && y >= 0 && x < iw && y < ih) {
       width = Math.min(iw - x, width);
       height = Math.min(ih - y, height);
