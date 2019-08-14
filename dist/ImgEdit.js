@@ -135,24 +135,22 @@
     const ctx = canvas.getContext("2d");
     const sprite = state.sprite;
     const { x, y, width, height } = sprite;
-    const { width: dWidth, height: dHeight } = sprite.getSize();
+    let { width: dWidth, height: dHeight } = sprite.getSize();
     canvas.width = dWidth;
     canvas.height = dHeight;
     if (sprite.angle) {
-      if (sprite.angle !== 1) {
-        // state.angle = .5, 1.5
-        [canvas.width, canvas.height] = [canvas.height, canvas.width];
-      }
       ctx.rotate(window.Math.PI * sprite.angle);
       switch (sprite.angle) {
         case .5:
-          ctx.translate(0, -canvas.width);
+          ctx.translate(0, -dWidth);
+          [dWidth, dHeight] = [dHeight, dWidth];
           break;
         case 1.5:
-          ctx.translate(-canvas.height, 0);
+          ctx.translate(-dHeight, 0);
+          [dWidth, dHeight] = [dHeight, dWidth];
           break;
         default:
-          ctx.translate(-canvas.width, -canvas.height);
+          ctx.translate(-dWidth, -dHeight);
       }
     }
     ctx.drawImage(sprite.img, x, y, width, height, 0, 0, dWidth, dHeight);
