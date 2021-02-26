@@ -16,6 +16,7 @@
     "url": "git+https://github.com/cgb1021/ImgEdit.git"
   },
   "keywords": [
+    "cropper",
     "img",
     "image",
     "canvas"
