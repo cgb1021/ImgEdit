@@ -16,7 +16,7 @@ export default class Sprite {
       if (src && canvas) {
         console.log('sprite draw')
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(src, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, 0, 0, canvas.width, canvas.height);
       }
     }
     Object.defineProperties(this, {
@@ -60,46 +60,46 @@ export default class Sprite {
       sx: {
         set(n) {
           if (typeof n !== 'number' || n < 0) return;
-          sx = n|0;
+          sx = n;
         },
         get() {
-          return sx;
+          return sx|0;
         }
       },
       sy: {
         set(n) {
           if (typeof n !== 'number' || n < 0) return;
-          sy = n|0;
+          sy = n;
         },
         get() {
-          return sy;
+          return sy|0;
         }
       },
       sw: {
         set(n) {
           if (typeof n !== 'number' || n < 0) return;
-          sw = n|0;
+          sw = n;
         },
         get() {
-          return sw;
+          return sw|0;
         }
       },
       sh: {
         set(n) {
           if (typeof n !== 'number' || n < 0) return;
-          sh = n|0;
+          sh = n;
         },
         get() {
-          return sh;
+          return sh|0;
         }
       },
       angle: {
         set(n) {
           if (typeof n !== 'number' || n < 0) return;
-          angle = n|0;
+          angle = n;
         },
         get() {
-          return angle;
+          return angle|0;
         }
       }
     })
