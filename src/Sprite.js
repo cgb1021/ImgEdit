@@ -1,64 +1,112 @@
-/*
- * @description 获取HTMLElement
- * @param {string|HTMLElement} el
- * @return HTMLElement
- */
-function querySelector(el) {
-  if (typeof el !== 'object') {
-    return /^\w+$/.test(el) ? document.getElementById(el) : document.querySelector(el);
-  } else if (el instanceof HTMLElement) return el;
-  return null;
-}
+import { querySelector } from './Utils'
 /*
  * 图片资源
  */
 export default class Sprite {
-  constructor(src, canvas) {
-    this._canvas = null; // canvas
-    this._src = null;
-    if (src) {
-      this.src(src)
+  constructor(img, el) {
+    let src = null;
+    let canvas = null;
+    let sx = 0; // 图像源裁剪起点x轴位置
+    let sy = 0; // 图像源裁剪起点y轴位置
+    let angle = 0; // 旋转角度
+    let sw = 0; // 图像源裁剪宽度
+    let sh = 0; // 图像源裁剪高度
+
+    function draw() {
+      if (src && canvas) {
+        console.log('sprite draw')
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(src, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      }
     }
-    if (this._src || canvas) {
-      this.canvas(canvas)
-    }
-  }
-  _draw() {
-    if (this._src && this._canvas) {
-      const ctx = this._canvas.getContext('2d');
-      ctx.drawImage(this._src, this._sx, this._sy, this._sw, this._sh, 0, 0);
-    }
-  }
-  /*
-   * @description 设置canvas
-   * @param {undefined|string|canvas} el
-   * @return {canvas|null}
-   */
-  canvas(el) {
-    el = querySelector(el);
-    if (el && 'getContext' in el) {
-      this._canvas = el;
-    }
-    if (!this._canvas) {
-      this._canvas = document.createElement('canvas');
-      this.resize();
-    }
-    return this._canvas;
-  }
-  /*
-   * @description 设置图像源（img，canvas）
-   * @param {Image|canvas} el
-   */
-  src(src) {
-    if (src instanceof Image || 'getContext' in src) {
-      this._src = src
-      this._sx = 0; // 图像源裁剪起点x轴位置
-      this._sy = 0; // 图像源裁剪起点y轴位置
-      this._angle = 0; // 旋转角度
-      this._sw = src.width; // 图像源裁剪宽度
-      this._sh = src.height; // 图像源裁剪高度
-      this.resize();
-    }
+    Object.defineProperties(this, {
+      canvas: {
+        /*
+         * @description 设置canvas
+         * @param {undefined|string|canvas} el
+         * @return {canvas|null}
+         */
+        set(el) {
+          canvas = querySelector(el);
+          if (!canvas || !('getContext' in canvas)) {
+            canvas = document.createElement('canvas');
+          }
+          draw();
+        },
+        get() {
+          return canvas;
+        }
+      },
+      src: {
+        /*
+         * @description 设置图像源（img，canvas）
+         * @param {Image|canvas} el
+         */
+        set(el) {
+          if (el && (el instanceof Image || 'getContext' in el)) {
+            src = el;
+            sx = 0; // 图像源裁剪起点x轴位置
+            sy = 0; // 图像源裁剪起点y轴位置
+            angle = 0; // 旋转角度
+            sw = el.width; // 图像源裁剪宽度
+            sh = el.height; // 图像源裁剪高度
+            this.resize();
+          }
+        },
+        get() {
+          return src;
+        }
+      },
+      sx: {
+        set(n) {
+          if (typeof n !== 'number' || n < 0) return;
+          sx = n|0;
+        },
+        get() {
+          return sx;
+        }
+      },
+      sy: {
+        set(n) {
+          if (typeof n !== 'number' || n < 0) return;
+          sy = n|0;
+        },
+        get() {
+          return sy;
+        }
+      },
+      sw: {
+        set(n) {
+          if (typeof n !== 'number' || n < 0) return;
+          sw = n|0;
+        },
+        get() {
+          return sw;
+        }
+      },
+      sh: {
+        set(n) {
+          if (typeof n !== 'number' || n < 0) return;
+          sh = n|0;
+        },
+        get() {
+          return sh;
+        }
+      },
+      angle: {
+        set(n) {
+          if (typeof n !== 'number' || n < 0) return;
+          angle = n|0;
+        },
+        get() {
+          return angle;
+        }
+      }
+    })
+
+    this.draw = draw;
+    this.src = img;
+    this.canvas = el;
   }
   /*
    * @description 设置宽高（canvas）
@@ -67,9 +115,10 @@ export default class Sprite {
    */
   resize(w, h) {
     try {
-      this._canvas.width = +w || this._src.width || this._canvas.width;
-      this._canvas.height = +h || this._src.height || this._canvas.height;
+      this.canvas.width = +w || this.sw || this.canvas.width;
+      this.canvas.height = +h || this.sh || this.canvas.height;
     } catch (e) {}
+    this.draw();
   }
   /*
    * @description 变形

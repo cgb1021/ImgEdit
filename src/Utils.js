@@ -1,5 +1,16 @@
 // 辅助方法
 import Sprite from './Sprite'
+/*
+ * @description 获取HTMLElement
+ * @param {string|HTMLElement} el
+ * @return HTMLElement
+ */
+export const querySelector = function(el) {
+  if (typeof el !== 'object') {
+    return /^\w+$/.test(el) ? document.getElementById(el) : document.querySelector(el);
+  } else if (el instanceof HTMLElement) return el;
+  return null;
+}
 /* 
  * 加载线上图片
  *
