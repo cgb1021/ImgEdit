@@ -4,35 +4,40 @@ import { querySelector, loadImg, readFile } from './Utils'
 const eventData = {
   active: false, // 点击事件开始标记
   offsetX: 0, // 点击事件开始x轴位置
-  offsetY: 0 // 点击事件开始y轴位置
+  offsetY: 0, // 点击事件开始y轴位置
+  ctrlKey: false // ctrl键按下标记
 };
 function moveEvent(e) {
   e.preventDefault();
   e.stopPropagation();
-  const state = this.state;
-  const sprite = this.sprite;
+  const { x, y, ratio } = this.state;
+  const { width, height } = this.src;
   switch (e.type) {
     case 'mousedown':
-      ctrlKey = e.ctrlKey;
-      if (!ctrlKey) {
-      } else {
-        // 按下ctrl键
-        eventData.active = true;
-        eventData.offsetX = e.offsetX;
-        eventData.offsetY = e.offsetY;
+      eventData.active = true;
+      eventData.ctrlKey = e.ctrlKey;
+      eventData.offsetX = e.offsetX;
+      eventData.offsetY = e.offsetY;
+      if (!eventData.ctrlKey && e.offsetX > x && e.offsetY > y && e.offsetX < x + width * ratio && e.offsetY < y + height * ratio) {
+        // 在图片范围内
+        eventData.offsetX = e.offsetX - x;
+        eventData.offsetY = e.offsetY - y;
       }
       break;
     case 'mouseout':
     case 'mouseup':
       if (eventData.active) {
-        this.canvas.style.cursor = 'default';
         eventData.active = false;
       }
       break;
     case 'mousemove':
       if (eventData.active) {
-        if (ctrlKey) {
+        if (eventData.ctrlKey) {
         } else {
+          this.merge({
+            x: e.offsetX - eventData.offsetX,
+            y: e.offsetY - eventData.offsetY
+          })
         }
       }
       break;
@@ -46,7 +51,7 @@ function moveEvent(e) {
         1); // 0 上(缩小，scale变小) 1 下(放大，scale变大)
       eventData.offsetX = e.offsetX;
       eventData.offsetY = e.offsetY;
-      this.scale(state.ratio + (direct ? 0.1 : -0.1), 1);
+      this.scale(ratio + (direct ? 0.1 : -0.1), 1);
       break;
   }
 }
@@ -60,8 +65,8 @@ export default class Editor {
     const history = []; // 操作步骤（state）集合
     const event = moveEvent.bind(this);
     const eventNames = ['mousewheel', 'mousedown', 'mouseup', 'mouseout', 'mousemove'];
-    const _state = {
-      ratio: 0,
+    const state = {
+      ratio: 1,
       x: 0,
       y: 0,
       width: 0,
@@ -73,6 +78,12 @@ export default class Editor {
         height: 0 // 选择范围（cut）高度（原始坐标系统）
       } // 矩形选择框数据（左上角为原点）
     };
+    const lastRect = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0
+    }
     let historyIndex = 0; // 操作步骤index
     let canvas = null;
 
@@ -89,7 +100,7 @@ export default class Editor {
       },
       state: {
         get() {
-          return history.length ? history[historyIndex] : Object.assign({}, _state, canvas ? { width: canvas.width, height: canvas.height } : {});
+          return history.length ? history[historyIndex] : Object.assign({}, state);
         }
       },
       canvas: {
@@ -109,16 +120,8 @@ export default class Editor {
         }
       },
       src: {
-        set(src) {
-          sprite.src = src;
-        },
         get() {
           return sprite.src;
-        }
-      },
-      sprite: {
-        get() {
-          return sprite;
         }
       }
     })
@@ -134,15 +137,18 @@ export default class Editor {
     /*
      * 推入一个状态
      */
-    this.push = (state) => {
-      if (!state || typeof state !== 'object') return;
-      history.push(Object.assign({}, _state, state))
+    this.push = (obj) => {
+      if (!obj || typeof obj !== 'object') return;
+      if (history.length) {
+        history.splice(historyIndex + 1);
+      }
+      history.push(Object.assign({}, state, obj));
       historyIndex = history.length - 1;
       this.draw();
     }
-    this.merge = (state) => {
+    this.merge = (obj) => {
       if (!history.length) return;
-      Object.assign(history[historyIndex], state);
+      Object.assign(history[historyIndex], obj);
       this.draw();
     }
     /*
@@ -154,7 +160,6 @@ export default class Editor {
       historyIndex = 0;
       history.length = 0;
       history.push(state);
-      this.draw();
     }
     /*
      * 清理history
@@ -162,8 +167,55 @@ export default class Editor {
     this.clean = () => {
       historyIndex = 0;
       history.length = 0;
-      this.draw();
     }
+    this.draw = () => {
+      if (canvas) {
+        const context = this.canvas.getContext('2d');
+        const src = sprite.src;
+        const { x, y, width, height, ratio } = this.state;
+        const { width: sw, height: sh } = src;
+        context.clearRect(lastRect.x, lastRect.y, lastRect.width, lastRect.height);
+        if (typeof this.before === 'function') this.before(context);
+        context.drawImage(src, 0, 0, sw | 0, sh | 0, x | 0, y | 0, (width * ratio) | 0, (height * ratio) | 0);
+        if (typeof this.after === 'function') this.after(context);
+        Object.assign(lastRect, {
+          x: Math.max(0, x - 1) | 0,
+          y: Math.max(0, y - 1) | 0,
+          width: Math.min(canvas.width, width * ratio + 1) | 0,
+          height: Math.min(canvas.height, height * ratio + 1) | 0
+        })
+      }
+    }
+    /*
+    * 异步打开图片
+    * @param {object/string} file 图片资源(Image/base64/url)
+    * @return {object} Promise
+    */
+    this.open = async (file) => {
+      let img;
+      if (!canvas || !file) return;
+      try {
+        if (file instanceof Image) {
+          if (/^blob:/.test(file.src)) img = file;
+          else img = await loadImg(file.src);
+        } else {
+          img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
+        }
+      } catch(e) {
+        console.log(e);
+        return;
+      }
+      if (!img) return;
+      sprite.src = img;
+      const ratio = Math.min(1, Math.min(canvas.width / img.width, canvas.height / img.height));
+      const width = img.width * ratio;
+      const height = img.height * ratio;
+      const x = (canvas.width - width) / 2;
+      const y = (canvas.height - height) / 2;
+      this.clean();
+      this.push({ ratio, x, y, width, height });
+    }
+
     this.canvas = el;
   }
   /*
@@ -183,84 +235,28 @@ export default class Editor {
    */
   resize() {}
   onChange() {}
-  /*
-   * 异步打开图片
-   * @param {object/string} file 图片资源(Image/base64/url)
-   * @return {object} Promise
-   */
-  async open(file) {
-    let img;
-    const canvas = this.canvas;
-    if (!canvas || !file) return;
-    try {
-      if (file instanceof Image) {
-        if (/^blob:/.test(file.src)) img = file;
-        else img = await loadImg(file.src);
-      } else {
-        img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
-      }
-    } catch(e) {
-      console.log(e);
-      return;
-    }
-    if (!img) return;
-    this.sprite.src = img;
-    this.clean();
-    const ratio = Math.min(1, Math.min(canvas.width / img.width, canvas.height / img.height));
-    const width = img.width * ratio;
-    const height = img.height * ratio;
-    const x = (canvas.width - width) / 2;
-    const y = (canvas.height - height) / 2;
-    this.push({ ratio, x, y, width, height });
-  }
-  draw() {
-    if (this.canvas) {
-      console.log('editor draw')
-      this.canvas.height = this.canvas.height;
-      const context = this.canvas.getContext('2d');
-      const { x, y, width, height, ratio } = this.state;
-      const { width: sw, height: sh } = this.sprite.canvas;
-      if (typeof this.before === 'function') this.before(context);
-      context.drawImage(this.sprite.canvas, 0, 0, sw | 0, sh | 0, x | 0, y | 0, (width * ratio) | 0, (height * ratio) | 0);
-      if (typeof this.after === 'function') this.after(context);
-    }
-  }
-  close() {
-    this.clean();
-    this.destroy();
-  }
-  scale(ratio, wheel) {
-    if (ratio < .1 || ratio > 10) {
+  scale(r, wheel) {
+    if (r < .1 || r > 10) {
       return;
     }
     // 放大比例不能小于1或大于10
     const state = this.state;
-    const _ratio = state.ratio;
-    const diff = ratio - _ratio;
-    const { x, y } = state;
-    const { width, height } = this.getSize();
+    const { x, y, ratio, width, height } = state;
+    const diff = r - ratio;
     if (wheel
         && eventData.offsetX > x
         && eventData.offsetY > y
-        && eventData.offsetX < x + width
-        && eventData.offsetY < y + height) {
+        && eventData.offsetX < x + width * ratio
+        && eventData.offsetY < y + height * ratio) {
       // 在图片范围内，以鼠标位置为中心
-      state.x -= ((eventData.offsetX - x) / _ratio) * diff;
-      state.y -= ((eventData.offsetY - y) / _ratio) * diff;
+      state.x -= ((eventData.offsetX - x) / ratio) * diff;
+      state.y -= ((eventData.offsetY - y) / ratio) * diff;
     } else {
       // 以图片在画布范围内中心点
-      state.x -= (state.width * ratio - width) * 0.5;
-      state.y -= (state.height * ratio - height) * 0.5;
+      state.x -= width * diff * 0.5;
+      state.y -= height * diff * 0.5;
     }
-    state.ratio = ratio;
+    state.ratio = r;
     this.merge(state);
-  }
-  getSize () {
-    const { ratio, width, height } = this.state;
-    return {
-      width: width * ratio,
-      height: height * ratio,
-      ratio
-    };
   }
 }
