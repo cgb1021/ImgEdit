@@ -10,34 +10,36 @@ const eventData = {
 function moveEvent(e) {
   e.preventDefault();
   e.stopPropagation();
-  const { x, y, ratio } = this.state;
+  const { x, y, ratio } = this.view;
   const { width, height } = this.src;
   switch (e.type) {
     case 'mousedown':
-      eventData.active = true;
       eventData.ctrlKey = e.ctrlKey;
       eventData.offsetX = e.offsetX;
       eventData.offsetY = e.offsetY;
       if (!eventData.ctrlKey && e.offsetX > x && e.offsetY > y && e.offsetX < x + width * ratio && e.offsetY < y + height * ratio) {
         // 在图片范围内
+        eventData.active = true;
         eventData.offsetX = e.offsetX - x;
         eventData.offsetY = e.offsetY - y;
       }
       break;
     case 'mouseout':
     case 'mouseup':
-      if (eventData.active) {
-        eventData.active = false;
-      }
+      eventData.active = false;
+      eventData.ctrlKey = false;
       break;
     case 'mousemove':
-      if (eventData.active) {
-        if (eventData.ctrlKey) {
-        } else {
-          this.merge({
-            x: e.offsetX - eventData.offsetX,
-            y: e.offsetY - eventData.offsetY
-          })
+      if (eventData.ctrlKey) {
+        const x = Math.min(e.offsetX, eventData.offsetX);
+        const y = Math.min(e.offsetY, eventData.offsetY);
+        const width = Math.max(e.offsetX, eventData.offsetX) - x;
+        const height = Math.max(e.offsetY, eventData.offsetY) - y;
+        this.range = { width, height, x, y }
+      } else if (eventData.active) {
+        this.view = {
+          x: e.offsetX - eventData.offsetX,
+          y: e.offsetY - eventData.offsetY
         }
       }
       break;
@@ -55,6 +57,23 @@ function moveEvent(e) {
       break;
   }
 }
+/* 
+ * 画矩形选择框
+ */
+function drawRect (ctx, state) {
+  const { range: {
+      x,
+      y,
+      width,
+      height
+    }} = state;
+  if (width && height) {
+    ctx.setLineDash([5, 2]);
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, width, height);
+  }
+}
 /*
  * 图片编辑器
  * 输入，输出，编辑，辅助
@@ -62,22 +81,31 @@ function moveEvent(e) {
 export default class Editor {
   constructor(el) {
     const sprite = new Sprite();
-    const history = []; // 操作步骤（state）集合
     const event = moveEvent.bind(this);
     const eventNames = ['mousewheel', 'mousedown', 'mouseup', 'mouseout', 'mousemove'];
+    const history = []; // 操作步骤（state）集合
     const state = {
-      ratio: 1,
-      x: 0,
-      y: 0,
       width: 0,
       height: 0,
-      range: {
-        x: 0, // 选择范围（setRange）在图片上的x轴位置（原始坐标系统）
-        y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
-        width: 0, // 选择范围（cut）宽度（原始坐标系统）
-        height: 0 // 选择范围（cut）高度（原始坐标系统）
-      } // 矩形选择框数据（左上角为原点）
+      angle: 0,
+      sx: 0,
+      sy: 0,
+      sw: 0,
+      sh: 0,
+      rx: 1,
+      ry: 1
     };
+    const view = {
+      ratio: 1,
+      x: 0,
+      y: 0
+    };
+    const range = {
+      x: 0, // 选择范围（setRange）在图片上的x轴位置（原始坐标系统）
+      y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
+      width: 0, // 选择范围（cut）宽度（原始坐标系统）
+      height: 0 // 选择范围（cut）高度（原始坐标系统）
+    } // 矩形选择框数据（左上角为原点）
     const lastRect = {
       x: 0,
       y: 0,
@@ -90,9 +118,8 @@ export default class Editor {
     Object.defineProperties(this, {
       historyIndex: {
         set(val) {
-          if (typeof val !== 'number') return;
+          if (typeof val !== 'number' || val === historyIndex) return;
           historyIndex = Math.max(0, Math.min(history.length - 1, val));
-          this.draw();
         },
         get() {
           return historyIndex;
@@ -101,6 +128,30 @@ export default class Editor {
       state: {
         get() {
           return history.length ? history[historyIndex] : Object.assign({}, state);
+        }
+      },
+      view: {
+        set(obj) {
+          if (obj && typeof obj === 'object') {
+            Object.assign(view, obj);
+            stateChange();
+            this.draw();
+          }
+        },
+        get() {
+          return view;
+        }
+      },
+      range: {
+        set(obj) {
+          if (obj && typeof obj === 'object') {
+            Object.assign(range, obj);
+            stateChange();
+            this.draw();
+          }
+        },
+        get() {
+          return range;
         }
       },
       canvas: {
@@ -126,29 +177,37 @@ export default class Editor {
       }
     })
 
-    this.destroy =  () => {
-      if (canvas) {
-        eventNames.forEach((name) => {
-          canvas.removeEventListener(name, event);
-        })
+    /*
+     * 更新sprite/触发onchange
+     */
+    const stateChange = (obj) => {
+      const state = this.state;
+      if (obj && typeof obj === 'object') {
+        if (typeof obj.angle !== 'undefined' && obj.angle !== state.angle) {
+          sprite.rotate(obj.angle);
+          state.width = sprite.width;
+          state.height = sprite.height;
+          obj.angle = sprite.angle;
+        }
+        if (obj.width && obj.height && (obj.width !== state.width || obj.height !== state.height)) {
+          sprite.resize(obj.width, obj.height);
+        }
       }
-      canvas = null;
+      if (typeof this.onChange === 'function') {
+        this.onChange(Object.assign({}, state, view, obj));
+      }
+      return Object.assign({}, state, obj);
     }
     /*
      * 推入一个状态
      */
     this.push = (obj) => {
       if (!obj || typeof obj !== 'object') return;
-      if (history.length) {
+      if (history.length && historyIndex !== history.length - 1) {
         history.splice(historyIndex + 1);
       }
-      history.push(Object.assign({}, state, obj));
+      history.push(stateChange(obj));
       historyIndex = history.length - 1;
-      this.draw();
-    }
-    this.merge = (obj) => {
-      if (!history.length) return;
-      Object.assign(history[historyIndex], obj);
       this.draw();
     }
     /*
@@ -156,7 +215,7 @@ export default class Editor {
      */
     this.save = () => {
       if (history.length < 2) return;
-      const state = history[historyIndex];
+      const state = this.state;
       historyIndex = 0;
       history.length = 0;
       history.push(state);
@@ -169,22 +228,27 @@ export default class Editor {
       history.length = 0;
     }
     this.draw = () => {
-      if (canvas) {
-        const context = this.canvas.getContext('2d');
-        const src = sprite.src;
-        const { x, y, width, height, ratio } = this.state;
-        const { width: sw, height: sh } = src;
-        context.clearRect(lastRect.x, lastRect.y, lastRect.width, lastRect.height);
-        if (typeof this.before === 'function') this.before(context);
-        context.drawImage(src, 0, 0, sw | 0, sh | 0, x | 0, y | 0, (width * ratio) | 0, (height * ratio) | 0);
-        if (typeof this.after === 'function') this.after(context);
-        Object.assign(lastRect, {
-          x: Math.max(0, x - 1) | 0,
-          y: Math.max(0, y - 1) | 0,
-          width: Math.min(canvas.width, width * ratio + 1) | 0,
-          height: Math.min(canvas.height, height * ratio + 1) | 0
-        })
-      }
+      if (!canvas) return;
+
+      const context = canvas.getContext('2d');
+      const src = sprite.src;
+      const { width: sw, height: sh } = src;
+      const { x, y, ratio } = this.view;
+      const { width, height } = this.state;
+
+      context.clearRect(lastRect.x, lastRect.y, lastRect.width, lastRect.height);
+      if (typeof this.before === 'function') this.before(context);
+      context.drawImage(src, 0, 0, sw | 0, sh | 0, x | 0, y | 0, (width * ratio) | 0, (height * ratio) | 0);
+      drawRect(context, {ratio, range});
+      if (typeof this.after === 'function') this.after(context);
+
+      Object.assign(lastRect, {
+        x: Math.max(0, x - 1) | 0,
+        y: Math.max(0, y - 1) | 0,
+        width: Math.min(canvas.width, width * ratio + 2) | 0,
+        height: Math.min(canvas.height, height * ratio + 2) | 0
+      })
+      // console.log('editor draw', lastRect, canvas.width, canvas.height)
     }
     /*
     * 异步打开图片
@@ -192,8 +256,8 @@ export default class Editor {
     * @return {object} Promise
     */
     this.open = async (file) => {
-      let img;
       if (!canvas || !file) return;
+      let img;
       try {
         if (file instanceof Image) {
           if (/^blob:/.test(file.src)) img = file;
@@ -207,13 +271,53 @@ export default class Editor {
       }
       if (!img) return;
       sprite.src = img;
-      const ratio = Math.min(1, Math.min(canvas.width / img.width, canvas.height / img.height));
-      const width = img.width * ratio;
-      const height = img.height * ratio;
-      const x = (canvas.width - width) / 2;
-      const y = (canvas.height - height) / 2;
+      const { width, height } = img;
+      const ratio = Math.min(1, Math.min(canvas.width / width, canvas.height / height));
+      const x = (canvas.width - width * ratio) / 2;
+      const y = (canvas.height - height * ratio) / 2;
+      this.view = { ratio, x, y };
       this.clean();
-      this.push({ ratio, x, y, width, height });
+      this.push({ width, height, sw: width, sh: height });
+    }
+    this.resize = (width, height) => {
+      const { width: sw, height: sh } = this.state;
+      let { ratio } = view;
+      width = +width;
+      height = +height;
+      if (width && height) {
+        ratio *= Math.min( sw / width, sh / height);
+      } else if (width) {
+        ratio *= sw / width;
+        height = width / (sw / sh);
+      } else if (height) {
+        ratio *= sh / height;
+        width = (sw / sh) * height;
+      }
+
+      this.view = { ratio };
+      this.push({ width, height });
+    }
+    this.rotate = (angle) => {
+      this.push({
+        angle
+      })
+    }
+    this.cut = () => {
+      console.log(range)
+    }
+    this.toDataURL = (mime = 'image/jpeg', quality = .8) => {
+      return sprite.toDataURL(mime, quality);
+    }
+    this.toBlob = (mime = 'image/jpeg', quality = .8) => {
+      return sprite.toBlob(mime, quality);
+    }
+    this.destroy =  () => {
+      if (canvas) {
+        eventNames.forEach((name) => {
+          canvas.removeEventListener(name, event);
+        })
+      }
+      canvas = null;
     }
 
     this.canvas = el;
@@ -233,15 +337,14 @@ export default class Editor {
   /*
    * 视图缩放
    */
-  resize() {}
-  onChange() {}
   scale(r, wheel) {
     if (r < .1 || r > 10) {
       return;
     }
     // 放大比例不能小于1或大于10
-    const state = this.state;
-    const { x, y, ratio, width, height } = state;
+    const view = this.view;
+    const { x, y, ratio } = view;
+    const { width, height } = this.state;
     const diff = r - ratio;
     if (wheel
         && eventData.offsetX > x
@@ -249,14 +352,14 @@ export default class Editor {
         && eventData.offsetX < x + width * ratio
         && eventData.offsetY < y + height * ratio) {
       // 在图片范围内，以鼠标位置为中心
-      state.x -= ((eventData.offsetX - x) / ratio) * diff;
-      state.y -= ((eventData.offsetY - y) / ratio) * diff;
+      view.x -= ((eventData.offsetX - x) / ratio) * diff;
+      view.y -= ((eventData.offsetY - y) / ratio) * diff;
     } else {
       // 以图片在画布范围内中心点
-      state.x -= width * diff * 0.5;
-      state.y -= height * diff * 0.5;
+      view.x -= width * diff * 0.5;
+      view.y -= height * diff * 0.5;
     }
-    state.ratio = r;
-    this.merge(state);
+    view.ratio = r;
+    this.view = view;
   }
 }

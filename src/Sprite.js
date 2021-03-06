@@ -11,13 +11,25 @@ export default class Sprite {
     let sw = 0; // 图像源裁剪宽度
     let sh = 0; // 图像源裁剪高度
     let angle = 0; // 旋转角度
+    let rx = 1;
+    let ry = 1;
 
     function draw() {
       if (src && canvas) {
         const ctx = canvas.getContext('2d');
+        const dw = sw * rx;
+        const dh = sh * ry;
         const { width, height } = canvas;
         canvas.height = height;
-        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, 0, 0, width, height);
+        ctx.save();
+        if (angle) {
+          ctx.translate((width / 2)|0, (height / 2)|0);
+          ctx.rotate((angle * Math.PI) / 180);
+          ctx.translate(-((dw * 0.5)|0), -((dh * 0.5)|0));
+        }
+        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, 0, 0, dw|0, dh|0);
+        ctx.restore();
+        // console.log('sprite draw', angle, sx|0, sy|0, sw|0, sh|0, 0, 0, dw | 0, dh | 0);
       }
     }
     Object.defineProperties(this, {
@@ -32,7 +44,11 @@ export default class Sprite {
           if (!canvas || !('getContext' in canvas)) {
             canvas = document.createElement('canvas');
           }
-          this.resize();
+          if (src) {
+            canvas.width = src.sw;
+            canvas.height = src.sh;
+          }
+          draw();
         }
       },
       src: {
@@ -43,12 +59,11 @@ export default class Sprite {
         set(el) {
           if (el && (el instanceof Image || 'getContext' in el)) {
             src = el;
-            sx = 0; // 图像源裁剪起点x轴位置
-            sy = 0; // 图像源裁剪起点y轴位置
-            angle = 0; // 旋转角度
-            sw = el.width; // 图像源裁剪宽度
-            sh = el.height; // 图像源裁剪高度
-            this.resize();
+            sy = sx = angle = 0;
+            rx = ry = 1;
+            canvas.width = sw = el.width;
+            canvas.height = sh = el.height;
+            draw();
           }
         },
         /*
@@ -69,28 +84,80 @@ export default class Sprite {
         }
       },
       sx: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n) && n >= 0) {
+            sx = n;
+          }
+        },
         get() {
-          return sx|0;
+          return sx;
         }
       },
       sy: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n) && n >= 0) {
+            sy = n;
+          }
+        },
         get() {
-          return sy|0;
+          return sy;
         }
       },
       sw: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            sw = n;
+          }
+        },
         get() {
-          return sw|0;
+          return sw;
         }
       },
       sh: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            sh = n;
+          }
+        },
         get() {
-          return sh|0;
+          return sh;
         }
       },
       angle: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n)) {
+            angle = (360 + n) % 360;
+          }
+        },
         get() {
-          return angle|0;
+          return angle;
+        }
+      },
+      rx: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            rx = n;
+          }
+        },
+        get() {
+          return rx;
+        }
+      },
+      ry: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            ry = n;
+          }
+        },
+        get() {
+          return ry;
         }
       }
     })
@@ -99,9 +166,31 @@ export default class Sprite {
     * @param {number} 宽度
     * @param {number} 高度
     */
-    this.resize = (w, h) => {
-      canvas.width = +w || sw || canvas.width;
-      canvas.height = +h || sh || canvas.height;
+    this.resize = (...args) => {
+      if (!canvas || !src) return;
+      const { width, height } = canvas;
+      if (args.length) {
+        const w = +args[0];
+        const h = args.length > 1 ? +args[1] : 0;
+        const ratio = width / height;
+        if (w && h) {
+          canvas.width = w | 0;
+          canvas.height = h | 0;
+        } else if (w) {
+          canvas.width = w | 0;
+          canvas.height = (w / ratio) | 0;
+        } else if (h) {
+          canvas.width = (h * ratio) | 0;
+          canvas.height = h | 0;
+        }
+      } else {
+        canvas.width = sw;
+        canvas.height = sh;
+      }
+      // const a = Math.abs((angle % 90) * (Math.PI / 180));
+      // dw *= (canvas.width / Math.cos(a) - canvas.height * Math.tan(a) / Math.cos(a)) / (1 + Math.tan(a) * Math.tan(a));
+      rx *= canvas.width / width;
+      ry *= canvas.height / height;
       draw();
     }
     /*
@@ -112,19 +201,21 @@ export default class Sprite {
      * @param {number} y坐标
      */
     this.cut = (...args) => {
+      if (!canvas || !src) return;
       const len = Math.min(4, args.length);
       for (let i = 0; i < len; i++) {
-        const n = args[i];
-        if (typeof n !== 'number' || n < 0) return;
-        switch (n) {
-          case 0: sx = n;
-            break;
-          case 1: sy = n;
-            break;
-          case 2: sw = src ? Math.min(src.width, n) : n;
-            break;
-          case 3: sh = src ? Math.min(src.width, n) : n;
-            break;
+        const n = +args[i];
+        if (!isNaN(n)) {
+          switch (i) {
+            case 0: if (n > 0) sw = src ? Math.min(src.width, n) : n;
+              break;
+            case 1: if (n > 0) sh = src ? Math.min(src.width, n) : n;
+            case 2: sx = Math.max(0, n);
+              break;
+            case 3: sy = Math.max(0, n);
+              break;
+            default: break;
+          }
         }
       }
       draw();
@@ -132,15 +223,20 @@ export default class Sprite {
     /*
      * @description 旋转
      * @param {number} 角度
-     * @param {number} 高度
-     * @param {number} x坐标
-     * @param {number} y坐标
      */
     this.rotate = (n) => {
-      if (typeof n !== 'number' || n < 0) return;
-      angle = (n < 0 ? 360 + n : n) % 360;
+      n = +n;
+      if (isNaN(n) || !canvas || !src) return;
+      const dw = sw * rx;
+      const dh = sh * ry;
+      angle = (360 + n) % 360;
+      n = angle % 180;
+      const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
+      canvas.width = (dw * Math.cos(a) + dh * Math.sin(a)) | 0;
+      canvas.height = (dh * Math.cos(a) + dw * Math.sin(a)) | 0;
       draw();
     }
+    this.draw = draw;
 
     this.src = img;
     this.canvas = el;
@@ -161,6 +257,7 @@ export default class Sprite {
    * @return {Promise}
    */
   toDataURL(mime = 'image/jpeg', quality = .8) {
+    return this.src.toDataURL(mime, quality);
   }
   /*
    * @description 输出图像为blob
@@ -169,5 +266,6 @@ export default class Sprite {
    * @return {Promise}
    */
   toBlob(mime = 'image/jpeg', quality = .8) {
+    return this.src.toBlob(mime, quality);
   }
 }
