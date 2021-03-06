@@ -6,13 +6,13 @@ export default class Sprite {
   constructor(img, el) {
     let src = null;
     let canvas = null;
-    let sx = 0; // 图像源裁剪起点x轴位置
-    let sy = 0; // 图像源裁剪起点y轴位置
-    let sw = 0; // 图像源裁剪宽度
-    let sh = 0; // 图像源裁剪高度
-    let angle = 0; // 旋转角度
-    let rx = 1;
-    let ry = 1;
+    let sw = 0; // src.width
+    let sh = 0; // src.height
+    let angle = 0; // canvas中心点旋转角度
+    let cx = 0; // canvas中心点偏移x轴
+    let cy = 0; // canvas中心点偏移y轴
+    let rx = 1; // canvas和src比率x轴
+    let ry = 1; // canvas和src比率y轴
 
     function draw() {
       if (src && canvas) {
@@ -25,11 +25,11 @@ export default class Sprite {
         if (angle) {
           ctx.translate((width / 2)|0, (height / 2)|0);
           ctx.rotate((angle * Math.PI) / 180);
-          ctx.translate(-((dw * 0.5)|0), -((dh * 0.5)|0));
+          ctx.translate((-dw * 0.5 + cx)|0, (-dh * 0.5 + cy)|0);
         }
-        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, 0, 0, dw|0, dh|0);
+        ctx.drawImage(src, 0, 0, dw|0, dh|0);
         ctx.restore();
-        // console.log('sprite draw', angle, sx|0, sy|0, sw|0, sh|0, 0, 0, dw | 0, dh | 0);
+        // console.log('sprite draw', angle, 0, 0, sw|0, sh|0, 0, 0, dw|0, dh|0);
       }
     }
     Object.defineProperties(this, {
@@ -45,8 +45,8 @@ export default class Sprite {
             canvas = document.createElement('canvas');
           }
           if (src) {
-            canvas.width = src.sw;
-            canvas.height = src.sh;
+            canvas.width = sw;
+            canvas.height = sh;
           }
           draw();
         }
@@ -59,7 +59,7 @@ export default class Sprite {
         set(el) {
           if (el && (el instanceof Image || 'getContext' in el)) {
             src = el;
-            sy = sx = angle = 0;
+            cx = cy = angle = 0;
             rx = ry = 1;
             canvas.width = sw = el.width;
             canvas.height = sh = el.height;
@@ -83,46 +83,12 @@ export default class Sprite {
           return canvas.height;
         }
       },
-      sx: {
-        set(n) {
-          n = +n;
-          if (!isNaN(n) && n >= 0) {
-            sx = n;
-          }
-        },
-        get() {
-          return sx;
-        }
-      },
-      sy: {
-        set(n) {
-          n = +n;
-          if (!isNaN(n) && n >= 0) {
-            sy = n;
-          }
-        },
-        get() {
-          return sy;
-        }
-      },
       sw: {
-        set(n) {
-          n = +n;
-          if (n && n > 0) {
-            sw = n;
-          }
-        },
         get() {
           return sw;
         }
       },
       sh: {
-        set(n) {
-          n = +n;
-          if (n && n > 0) {
-            sh = n;
-          }
-        },
         get() {
           return sh;
         }
@@ -136,6 +102,28 @@ export default class Sprite {
         },
         get() {
           return angle;
+        }
+      },
+      cx: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n)) {
+            cx = n;
+          }
+        },
+        get() {
+          return cx;
+        }
+      },
+      cy: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n)) {
+            cy = n;
+          }
+        },
+        get() {
+          return cy;
         }
       },
       rx: {

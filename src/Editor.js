@@ -57,23 +57,6 @@ function moveEvent(e) {
       break;
   }
 }
-/* 
- * 画矩形选择框
- */
-function drawRect (ctx, state) {
-  const { range: {
-      x,
-      y,
-      width,
-      height
-    }} = state;
-  if (width && height) {
-    ctx.setLineDash([5, 2]);
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, width, height);
-  }
-}
 /*
  * 图片编辑器
  * 输入，输出，编辑，辅助
@@ -106,14 +89,10 @@ export default class Editor {
       width: 0, // 选择范围（cut）宽度（原始坐标系统）
       height: 0 // 选择范围（cut）高度（原始坐标系统）
     } // 矩形选择框数据（左上角为原点）
-    const lastRect = {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0
-    }
+    const rects = []
     let historyIndex = 0; // 操作步骤index
     let canvas = null;
+    let lineWidth = 1;
 
     Object.defineProperties(this, {
       historyIndex: {
@@ -236,18 +215,31 @@ export default class Editor {
       const { x, y, ratio } = this.view;
       const { width, height } = this.state;
 
-      context.clearRect(lastRect.x, lastRect.y, lastRect.width, lastRect.height);
+      for (let i = rects.length - 1; i >= 0; i--) {
+        const { x, y, width, height } = rects[i];
+        if (width && height) context.clearRect(x|0, y|0, width|0, height|0);
+      }
       if (typeof this.before === 'function') this.before(context);
-      context.drawImage(src, 0, 0, sw | 0, sh | 0, x | 0, y | 0, (width * ratio) | 0, (height * ratio) | 0);
-      drawRect(context, {ratio, range});
+      context.drawImage(src, 0, 0, sw|0, sh|0, x|0, y|0, (width * ratio)|0, (height * ratio)|0);
+      rects[0] = {
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+        width: Math.min(canvas.width, width * ratio),
+        height: Math.min(canvas.height, height * ratio)
+      };
+      if (range.width && range.height) {
+        context.setLineDash([5, 2]);
+        context.strokeStyle = "black";
+        context.lineWidth = lineWidth;
+        context.strokeRect(range.x, range.y, range.width, range.height);
+        rects[1] = {
+          x: Math.max(0, range.x - lineWidth),
+          y: Math.max(0, range.y - lineWidth),
+          width: range.width + lineWidth * 2,
+          height: range.height + lineWidth * 2
+        }
+      }
       if (typeof this.after === 'function') this.after(context);
-
-      Object.assign(lastRect, {
-        x: Math.max(0, x - 1) | 0,
-        y: Math.max(0, y - 1) | 0,
-        width: Math.min(canvas.width, width * ratio + 2) | 0,
-        height: Math.min(canvas.height, height * ratio + 2) | 0
-      })
       // console.log('editor draw', lastRect, canvas.width, canvas.height)
     }
     /*
@@ -275,6 +267,7 @@ export default class Editor {
       const ratio = Math.min(1, Math.min(canvas.width / width, canvas.height / height));
       const x = (canvas.width - width * ratio) / 2;
       const y = (canvas.height - height * ratio) / 2;
+      rects.length = 0;
       this.view = { ratio, x, y };
       this.clean();
       this.push({ width, height, sw: width, sh: height });
