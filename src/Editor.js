@@ -71,10 +71,6 @@ export default class Editor {
       width: 0,
       height: 0,
       angle: 0,
-      sx: 0,
-      sy: 0,
-      sw: 0,
-      sh: 0,
       rx: 1,
       ry: 1
     };
@@ -84,10 +80,10 @@ export default class Editor {
       y: 0
     };
     const range = {
-      x: 0, // 选择范围（setRange）在图片上的x轴位置（原始坐标系统）
-      y: 0, // 选择范围（setRange）在图片上的y轴位置（原始坐标系统）
-      width: 0, // 选择范围（cut）宽度（原始坐标系统）
-      height: 0 // 选择范围（cut）高度（原始坐标系统）
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0
     } // 矩形选择框数据（左上角为原点）
     const rects = []
     let historyIndex = 0; // 操作步骤index
@@ -161,19 +157,8 @@ export default class Editor {
      */
     const stateChange = (obj) => {
       const state = this.state;
-      if (obj && typeof obj === 'object') {
-        if (typeof obj.angle !== 'undefined' && obj.angle !== state.angle) {
-          sprite.rotate(obj.angle);
-          state.width = sprite.width;
-          state.height = sprite.height;
-          obj.angle = sprite.angle;
-        }
-        if (obj.width && obj.height && (obj.width !== state.width || obj.height !== state.height)) {
-          sprite.resize(obj.width, obj.height);
-        }
-      }
       if (typeof this.onChange === 'function') {
-        this.onChange(Object.assign({}, state, view, obj));
+        this.onChange(Object.assign({}, state, view, { range }, obj));
       }
       return Object.assign({}, state, obj);
     }
@@ -211,7 +196,6 @@ export default class Editor {
 
       const context = canvas.getContext('2d');
       const src = sprite.src;
-      const { width: sw, height: sh } = src;
       const { x, y, ratio } = this.view;
       const { width, height } = this.state;
 
@@ -220,7 +204,7 @@ export default class Editor {
         if (width && height) context.clearRect(x|0, y|0, width|0, height|0);
       }
       if (typeof this.before === 'function') this.before(context);
-      context.drawImage(src, 0, 0, sw|0, sh|0, x|0, y|0, (width * ratio)|0, (height * ratio)|0);
+      context.drawImage(src, x|0, y|0, (width * ratio)|0, (height * ratio)|0);
       rects[0] = {
         x: Math.max(0, x),
         y: Math.max(0, y),
@@ -240,7 +224,7 @@ export default class Editor {
         }
       }
       if (typeof this.after === 'function') this.after(context);
-      // console.log('editor draw', lastRect, canvas.width, canvas.height)
+      console.log('editor draw', x|0, y|0, (width * ratio)|0, (height * ratio)|0);
     }
     /*
     * 异步打开图片
@@ -288,15 +272,47 @@ export default class Editor {
       }
 
       this.view = { ratio };
+      sprite.resize(width, height);
       this.push({ width, height });
     }
+    this.cut = () => {
+      const { x: rx, y: ry, width: rw, height: rh} = range;
+      const { x: vx, y: vy, ratio } = view;
+      let { width: sw, height: sh } = this.state;
+      sw *= ratio;
+      sh *= ratio;
+      this.range = { x: 0, y: 0, width: 0, height: 0 };
+      if (rw && rw && (rx + rw) > vx  && (ry + rh) > vy && rx < (vx + sw) && ry < (vy + sh)) {
+        // 选择范围和图片有交叉
+        const x = Math.max(0, rx - vx);
+        const y = Math.max(0, ry - vy);
+        const width = Math.min(vx + sw, rx + rw) - Math.max(vx, rx);
+        const height = Math.min(vy + sh, ry + rh) - Math.max(vy, ry);
+        if (x <= vx && y <= vy && width >= sw && height >= sh) {
+          // 截取整张图片
+          return;
+        }
+        sprite.cut(width / ratio, height / ratio, x / ratio, y / ratio);
+        Object.assign(view, {
+          x: Math.max(rx, vx),
+          y: Math.max(ry, vy)
+        });
+        this.push({
+          width: width / ratio,
+          height: height / ratio,
+          x: Math.max(rx, vx),
+          y: Math.max(ry, vy)
+        });
+      }
+    }
     this.rotate = (angle) => {
+      sprite.rotate(angle);
+      const { width, height } = sprite;
       this.push({
+        width,
+        height,
         angle
       })
-    }
-    this.cut = () => {
-      console.log(range)
     }
     this.toDataURL = (mime = 'image/jpeg', quality = .8) => {
       return sprite.toDataURL(mime, quality);
