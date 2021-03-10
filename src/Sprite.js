@@ -8,11 +8,11 @@ export default class Sprite {
   constructor(img, el) {
     let src = null;
     let canvas = null;
-    let sw = 0; // 源图原始宽度（src.width)
-    let sh = 0; // 源图原始高度（src.height)
+    let sw = 0; // 源图原始宽度（src.width）
+    let sh = 0; // 源图原始高度（src.height）
     let angle = 0; // canvas中心点旋转角度
-    let dx = 0; // canvas中心点偏移x轴
-    let dy = 0; // canvas中心点偏移y轴
+    let sx = 0; // canvas中心点偏移x轴
+    let sy = 0; // canvas中心点偏移y轴
     let rx = 1; // canvas和src比率x轴
     let ry = 1; // canvas和src比率y轴
 
@@ -25,17 +25,17 @@ export default class Sprite {
           width,
           height
         } = canvas;
-        let _dx = dx;
-        let _dy = dy;
+        let dx = 0;
+        let dy = 0;
         canvas.height = height;
         ctx.save();
         if (angle) {
           ctx.translate((width / 2)|0, (height / 2)|0);
           ctx.rotate((angle * Math.PI) / 180);
-          _dx -= dw * 0.5;
-          _dy -= dh * 0.5;
+          dx -= dw * 0.5;
+          dy -= dh * 0.5;
         }
-        ctx.drawImage(src, _dx|0, _dy|0, dw|0, dh|0);
+        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, dx|0, dy|0, dw|0, dh|0);
         ctx.restore();
         // console.log('sprite draw', angle, dx|0, dy|0, dw|0, dh|0);
       }
@@ -67,7 +67,7 @@ export default class Sprite {
         set(el) {
           if (el && (el instanceof Image || 'getContext' in el)) {
             src = el;
-            dx = dy = angle = 0;
+            sx = sy = angle = 0;
             rx = ry = 1;
             canvas.width = sw = el.width;
             canvas.height = sh = el.height;
@@ -112,26 +112,26 @@ export default class Sprite {
           return angle;
         }
       },
-      dx: {
+      sx: {
         set(n) {
           n = +n;
           if (!isNaN(n)) {
-            dx = n;
+            sx = n;
           }
         },
         get() {
-          return dx;
+          return sx;
         }
       },
-      dy: {
+      sy: {
         set(n) {
           n = +n;
           if (!isNaN(n)) {
-            dy = n;
+            sy = n;
           }
         },
         get() {
-          return dy;
+          return sy;
         }
       },
       rx: {
@@ -199,38 +199,22 @@ export default class Sprite {
      * @param {number} x坐标
      * @param {number} y坐标
      */
-    this.cut = (...args) => {
-      if (!canvas || !src) return;
-      const len = Math.min(4, args.length);
-      for (let i = 0; i < len; i++) {
-        const n = +args[i];
-        if (!isNaN(n)) {
-          switch (i) {
-            case 0:
-              if (n > 0) {
-                canvas.width = Math.min(canvas.width, n)|0;
-              } else {
-                return;
-              }
-              break;
-            case 1:
-              if (n > 0) {
-                canvas.height = Math.min(canvas.height, n)|0;
-              } else {
-                return;
-              }
-              break;
-            case 2:
-              dx -= Math.max(0, n);
-              break;
-            case 3:
-              dy -= Math.max(0, n);
-              break;
-            default:
-              break;
-          }
-        }
-      }
+    this.crop = (...args) => {
+      if (!canvas || !src || !args.length) return;
+      const width = +args[0];
+      const height = args.length > 1 ? +args[1] : canvas.height;
+      const x = args.length > 2 ? +args[2] : 0;
+      const y = args.length > 3 ? +args[3] : 0;
+      /* const a = angle * (Math.PI / 180);
+      const atan = Math.atan2(y, x);
+      const len = x * Math.sin(atan); */
+      canvas.width = width;
+      canvas.height = height;
+      sx += x / rx;
+      sy += y / ry;
+      sw = width / rx;
+      sh = height / ry;
+      // console.log('sprite crop', len / Math.sin(atan - a), len / Math.cos(atan - a), x, y, sx, sy);
       draw();
     }
     /*

@@ -275,7 +275,7 @@ export default class Editor {
       sprite.resize(width, height);
       this.push({ width, height });
     }
-    this.cut = () => {
+    this.crop = () => {
       const { x: rx, y: ry, width: rw, height: rh} = range;
       const { x: vx, y: vy, ratio } = view;
       let { width: sw, height: sh } = this.state;
@@ -292,7 +292,7 @@ export default class Editor {
           // 截取整张图片
           return;
         }
-        sprite.cut(width / ratio, height / ratio, x / ratio, y / ratio);
+        sprite.crop(width / ratio, height / ratio, x / ratio, y / ratio);
         Object.assign(view, {
           x: Math.max(rx, vx),
           y: Math.max(ry, vy)
