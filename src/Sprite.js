@@ -1,6 +1,23 @@
 import {
   querySelector
 } from './Utils'
+
+function getXY(angle, x, y) {
+  const sin = Math.sin(angle * (Math.PI / 180));
+  const cos = Math.cos(angle * (Math.PI / 180));
+
+  return [x * cos + y * sin, y * cos - x * sin];
+}
+function getStartEnd(p4, p2) {
+  p4 = p4.sort((a, b) => a - b);
+  p2 = p2.sort((a, b) => a - b);
+  let n1 = null, n3 = null;
+  if (p4[3] > p2[0] && p2[1] > p4[0]) {
+    n1 = p2[0] <= p4[0] ? p4[0] : p2[0];
+    n3 = p2[1] <= p4[3] ? p2[1] : p4[3];
+  }
+  return [n1, n3];
+}
 /*
  * 图片资源
  */
@@ -8,38 +25,16 @@ export default class Sprite {
   constructor(img, el) {
     let src = null;
     let canvas = null;
-    let sw = 0; // 源图原始宽度（src.width）
-    let sh = 0; // 源图原始高度（src.height）
+    let sw = 0; // 源图裁剪宽度
+    let sh = 0; // 源图裁剪高度
+    let sx = 0; // 源图裁剪位移x轴
+    let sy = 0; // 源图裁剪位移y轴
     let angle = 0; // canvas中心点旋转角度
-    let sx = 0; // canvas中心点偏移x轴
-    let sy = 0; // canvas中心点偏移y轴
     let rx = 1; // canvas和src比率x轴
     let ry = 1; // canvas和src比率y轴
+    let dx = 0;
+    let dy = 0;
 
-    function draw() {
-      if (src && canvas) {
-        const ctx = canvas.getContext('2d');
-        const dw = sw * rx;
-        const dh = sh * ry;
-        const {
-          width,
-          height
-        } = canvas;
-        let dx = 0;
-        let dy = 0;
-        canvas.height = height;
-        ctx.save();
-        if (angle) {
-          ctx.translate((width / 2)|0, (height / 2)|0);
-          ctx.rotate((angle * Math.PI) / 180);
-          dx -= dw * 0.5;
-          dy -= dh * 0.5;
-        }
-        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, dx|0, dy|0, dw|0, dh|0);
-        ctx.restore();
-        // console.log('sprite draw', angle, dx|0, dy|0, dw|0, dh|0);
-      }
-    }
     Object.defineProperties(this, {
       canvas: {
         /*
@@ -157,40 +152,68 @@ export default class Sprite {
         }
       }
     })
+    function draw() {
+      if (src) {
+        const ctx = canvas.getContext('2d');
+        const dw = sw * rx;
+        const dh = sh * ry;
+        const {
+          width,
+          height
+        } = canvas;
+        let x = dx;
+        let y = dy;
+        canvas.height = height;
+        ctx.save();
+        if (angle) {
+          ctx.translate((width / 2)|0, (height / 2)|0);
+          ctx.rotate((angle * Math.PI) / 180);
+          x -= dw * 0.5;
+          y -= dh * 0.5;
+        }
+        ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, x|0, y|0, dw|0, dh|0);
+        ctx.restore();
+        // console.log('sprite draw', angle, dx|0, dy|0, dw|0, dh|0);
+      } else {
+        console.log('no src')
+      }
+    }
     /*
      * @description 设置宽高（canvas）
      * @param {number} 宽度
      * @param {number} 高度
      */
     this.resize = (...args) => {
-      if (!canvas || !src) return;
-      const {
-        width,
-        height
-      } = canvas;
-      if (args.length) {
-        const w = +args[0];
-        const h = args.length > 1 ? +args[1] : 0;
-        const ratio = width / height;
-        if (w && h) {
-          canvas.width = w|0;
-          canvas.height = h|0;
-        } else if (w) {
-          canvas.width = w|0;
-          canvas.height = (w / ratio)|0;
-        } else if (h) {
-          canvas.width = (h * ratio)|0;
-          canvas.height = h|0;
+      if (src) {
+        const {
+          width,
+          height
+        } = canvas;
+        if (args.length) {
+          const w = +args[0];
+          const h = args.length > 1 ? +args[1] : 0;
+          const ratio = width / height;
+          if (w && h) {
+            canvas.width = w|0;
+            canvas.height = h|0;
+          } else if (w) {
+            canvas.width = w|0;
+            canvas.height = (w / ratio)|0;
+          } else if (h) {
+            canvas.width = (h * ratio)|0;
+            canvas.height = h|0;
+          }
+        } else {
+          canvas.width = sw;
+          canvas.height = sh;
         }
-      } else {
-        canvas.width = sw;
-        canvas.height = sh;
+        // const a = Math.abs((angle % 90) * (Math.PI / 180));
+        // dw *= (canvas.width / Math.cos(a) - canvas.height * Math.tan(a) / Math.cos(a)) / (1 + Math.tan(a) * Math.tan(a));
+        rx *= canvas.width / width;
+        ry *= canvas.height / height;
+        draw();
       }
-      // const a = Math.abs((angle % 90) * (Math.PI / 180));
-      // dw *= (canvas.width / Math.cos(a) - canvas.height * Math.tan(a) / Math.cos(a)) / (1 + Math.tan(a) * Math.tan(a));
-      rx *= canvas.width / width;
-      ry *= canvas.height / height;
-      draw();
+      return this;
     }
     /*
      * @description 裁剪
@@ -200,22 +223,46 @@ export default class Sprite {
      * @param {number} y坐标
      */
     this.crop = (...args) => {
-      if (!canvas || !src || !args.length) return;
-      const width = +args[0];
-      const height = args.length > 1 ? +args[1] : canvas.height;
-      const x = args.length > 2 ? +args[2] : 0;
-      const y = args.length > 3 ? +args[3] : 0;
-      /* const a = angle * (Math.PI / 180);
-      const atan = Math.atan2(y, x);
-      const len = x * Math.sin(atan); */
-      canvas.width = width;
-      canvas.height = height;
-      sx += x / rx;
-      sy += y / ry;
-      sw = width / rx;
-      sh = height / ry;
-      // console.log('sprite crop', len / Math.sin(atan - a), len / Math.cos(atan - a), x, y, sx, sy);
-      draw();
+      if (src && args.length) {
+        const width = +args[0];
+        const height = args.length > 1 ? +args[1] : canvas.height;
+        const x = args.length > 2 ? +args[2] : 0;
+        const y = args.length > 3 ? +args[3] : 0;
+        const iw = sw * rx;
+        const ih = sh * ry;
+        const sin = Math.sin(angle * (Math.PI / 180));
+        const cos = Math.cos(angle * (Math.PI / 180));
+        const [x1, y1] = getXY(angle, x, y);
+        const [x2, y2] = getXY(angle, x + width, y);
+        const [x3, y3] = getXY(angle, x + width, y + height);
+        const [x4, y4] = getXY(angle, x, y + height);
+        const [ix1, iy1] = getXY(angle, ih * sin, 0);
+        const [ix2, iy2] = getXY(angle, canvas.width, iw * sin);
+        const [ix3, iy3] = getXY(angle, iw * cos, canvas.height);
+        const [ix4, iy4] = getXY(angle, 0, ih * cos);
+        const [nx1, nx3] = getStartEnd([x1, x2, x3, x4], [ix1, ix2]);
+        const [ny1, ny3] = getStartEnd([y1, y2, y3, y4], [iy1, iy4]);
+        if (nx1 === null || nx3 === null || ny1 === null || ny3 === null) {
+          // console.log('没有相交')
+          return this;
+        }
+        const nw = nx3 - nx1;
+        const nh = ny3 - ny1;
+        if (Math.round(nw) >= Math.round(iw) && Math.round(nh) >= Math.round(ih)) {
+          // console.log('全部覆盖')
+          return this;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        sx += (nx1 - ix1) / rx;
+        sy += (ny1 - iy1) / ry;
+        if (nw < iw || nh < ih) {
+          sw = nw / rx;
+          sh = nh / ry;
+        }
+        draw();
+      }
+      return this;
     }
     /*
      * @description 旋转
@@ -223,30 +270,24 @@ export default class Sprite {
      */
     this.rotate = (n) => {
       n = +n;
-      if (isNaN(n) || !canvas || !src) return;
-      const dw = sw * rx;
-      const dh = sh * ry;
-      angle = (360 + n) % 360;
-      n = angle % 180;
-      const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
-      canvas.width = (dw * Math.cos(a) + dh * Math.sin(a))|0;
-      canvas.height = (dh * Math.cos(a) + dw * Math.sin(a))|0;
-      draw();
+      if (!isNaN(n) && src) {
+        const dw = sw * rx;
+        const dh = sh * ry;
+        angle = (360 + n) % 360;
+        n = angle % 180;
+        const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
+        canvas.width = (dw * Math.cos(a) + dh * Math.sin(a))|0;
+        canvas.height = (dh * Math.cos(a) + dw * Math.sin(a))|0;
+        draw();
+      }
+      return this;
     }
-    this.draw = draw;
 
+    this.draw = draw;
     this.src = img;
     this.canvas = el;
     img = el = null;
   }
-  /*
-   * @description 变形
-   * @param {number} w
-   * @param {number} h
-   * @param {number} x
-   * @param {number} y
-   */
-  scale() {}
   /*
    * @description 输出图像为dataurl
    * @param {string} mime

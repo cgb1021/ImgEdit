@@ -224,7 +224,7 @@ export default class Editor {
         }
       }
       if (typeof this.after === 'function') this.after(context);
-      console.log('editor draw', x|0, y|0, (width * ratio)|0, (height * ratio)|0);
+      // console.log('editor draw', x|0, y|0, (width * ratio)|0, (height * ratio)|0);
     }
     /*
     * 异步打开图片
