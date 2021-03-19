@@ -298,8 +298,8 @@ export default class Editor {
           y: Math.max(ry, vy)
         });
         this.push({
-          width: width / ratio,
-          height: height / ratio,
+          width: sprite.width,
+          height: sprite.height,
           x: Math.max(rx, vx),
           y: Math.max(ry, vy)
         });
