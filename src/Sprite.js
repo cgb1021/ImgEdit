@@ -333,33 +333,99 @@ export default class Sprite {
             [ny1, ny3] = getStartEnd([y1, y2, y3, y4], [sy1, sy4]);
           }
           // 裁剪源图
-          sx += (nx1 - sx1) / rx;
-          sy += (ny1 - sy1) / ry;
           newWidth = nx3 - nx1;
           newHeight = ny3 - ny1;
-          if (newWidth < srcWidth || newHeight < srcHeight) {
-            sw = newWidth / rx;
-            sh = newHeight / ry;
+          if (angle < 90) {
+            sx += (nx1 - sx1) / rx;
+            sy += (ny1 - sy1) / ry;
+            if (newWidth < srcWidth || newHeight < srcHeight) {
+              sw = newWidth / rx;
+              sh = newHeight / ry;
+            }
+          } else if (angle < 180) {
+            sx += (ny1 - sy1) / rx;
+            sy += (srcWidth - (nx1 - sx1) - newWidth) / ry;
+            if (newHeight < srcWidth || newWidth < srcHeight) {
+              sw = newHeight / rx;
+              sh = newWidth / ry;
+            }
+          } else if (angle < 270) {
+            sx += (srcWidth - (nx1 - sx1) - newWidth) / rx;
+            sy += (srcHeight - (ny1 - sy1) - newHeight) / ry;
+            if (newWidth < srcWidth || newHeight < srcHeight) {
+              sw = newWidth / rx;
+              sh = newHeight / ry;
+            }
+          } else {
+            sx += (srcHeight - (ny1 - sy1) - newHeight) / rx;
+            sy += (nx1 - sx1) / ry;
+            if (newHeight < srcWidth || newWidth < srcHeight) {
+              sw = newHeight / rx;
+              sh = newWidth / ry;
+            }
           }
         }
-        if (x1 < sx1) {
-          // console.log('调整dx+')
-          dimx += sx1 - x1;
+        if (angle % 90) {
+          if (angle < 90) {
+            if (x1 < sx1) {
+              // console.log('调整dx+')
+              dimx += sx1 - x1;
+            }
+            if (x3 > sx2) {
+              // console.log('调整dx-')
+              dimx -= x3 - sx2;
+            }
+            if (y2 < sy1) {
+              // console.log('调整dy+')
+              dimy += sy1 - y2;
+            }
+            if (y4 > sy4) {
+              // console.log('调整dy-')
+              dimy -= y4 - sy4;
+            }
+          } else if (angle < 180) {
+            if (x1 < sx1) {
+              dimy -= sx1 - x1;
+            }
+            if (x3 > sx2) {
+              dimy += x3 - sx2;
+            }
+            if (y2 < sy1) {
+              dimx += sy1 - y2;
+            }
+            if (y4 > sy4) {
+              dimx -= y4 - sy4;
+            }
+          } else if (angle < 270) {
+            if (x1 < sx1) {
+              dimx -= sx1 - x1;
+            }
+            if (x3 > sx2) {
+              dimx += x3 - sx2;
+            }
+            if (y2 < sy1) {
+              dimy -= sy1 - y2;
+            }
+            if (y4 > sy4) {
+              dimy += y4 - sy4;
+            }
+          } else {
+            if (x1 < sx1) {
+              dimy += sx1 - x1;
+            }
+            if (x3 > sx2) {
+              dimy -= x3 - sx2;
+            }
+            if (y2 < sy1) {
+              dimx -= sy1 - y2;
+            }
+            if (y4 > sy4) {
+              dimx += y4 - sy4;
+            }
+          }
+          dx += dimx * 0.5;
+          dy += dimy * 0.5;
         }
-        if (x3 > sx2) {
-          // console.log('调整dx-')
-          dimx -= x3 - sx2;
-        }
-        if (y2 < sy1) {
-          // console.log('调整dy+')
-          dimy += sy1 - y2;
-        }
-        if (y4 > sy4) {
-          // console.log('调整dy-')
-          dimy -= y4 - sy4;
-        }
-        dx += dimx * 0.5;
-        dy += dimy * 0.5;
         canvas.width = cWidth|0;
         canvas.height = cHeight|0;
         draw();
