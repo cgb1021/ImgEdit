@@ -2,9 +2,9 @@ import {
   querySelector
 } from './Utils'
 
-function getXY(angle, x, y) {
-  const sin = Math.sin(angle * (Math.PI / 180));
-  const cos = Math.cos(angle * (Math.PI / 180));
+function getXY(deg, x, y) {
+  const sin = Math.sin(deg);
+  const cos = Math.cos(deg);
 
   return [x * cos + y * sin, y * cos - x * sin];
 }
@@ -34,6 +34,8 @@ export default class Sprite {
     let ry = 1; // canvas和src比率y轴
     let dx = 0;
     let dy = 0;
+    let cw = 0;
+    let ch = 0;
 
     Object.defineProperties(this, {
       canvas: {
@@ -64,8 +66,8 @@ export default class Sprite {
             src = el;
             sx = sy = angle = 0;
             rx = ry = 1;
-            canvas.width = sw = el.width;
-            canvas.height = sh = el.height;
+            canvas.width = cw = sw = el.width;
+            canvas.height = ch = sh = el.height;
             draw();
           }
         },
@@ -204,8 +206,8 @@ export default class Sprite {
             canvas.height = h|0;
           }
         } else {
-          canvas.width = sw;
-          canvas.height = sh;
+          canvas.width = cw;
+          canvas.height = ch;
         }
         // const a = Math.abs((angle % 90) * (Math.PI / 180));
         // dw *= (canvas.width / Math.cos(a) - canvas.height * Math.tan(a) / Math.cos(a)) / (1 + Math.tan(a) * Math.tan(a));
@@ -228,25 +230,38 @@ export default class Sprite {
         const height = args.length > 1 ? +args[1] : canvas.height;
         const x = args.length > 2 ? +args[2] : 0;
         const y = args.length > 3 ? +args[3] : 0;
-        const sin = Math.sin(angle * (Math.PI / 180));
-        const cos = Math.cos(angle * (Math.PI / 180));
-        const iw = sw * rx;
-        const ih = sh * ry;
-        const iwSin = iw * sin;
-        const iwCos = iw * cos;
-        const ihSin = ih * sin;
-        const ihCos = ih * cos;
-        const { width: cw, height: ch } = canvas;
-        console.log(width, height, x, y, cw, ch)
+        let srcWidth = sw * rx;
+        let srcHeight = sh * ry;
+        // 获取图像4个顶点位置（左上，右上，右下，左下）
+        let deg = 0
+        if (angle % 90) {
+          // 0 ~ 90, 180 ~ 270
+          if (angle < 90 || (angle > 180 && angle < 270)) {
+            deg = (angle - (angle > 180 ? 180 : 0)) * (Math.PI / 180);
+          } else {
+            // 90 ~ 180, 270 ~ 360
+            deg = (angle - (angle > 270 ? 270 : 90)) * (Math.PI / 180);
+            [srcWidth, srcHeight] = [srcHeight, srcWidth];
+          }
+        } else if (angle === 90 || angle === 270) {
+          [srcWidth, srcHeight] = [srcHeight, srcWidth];
+        }
+        const sin = Math.sin(deg);
+        const cos = Math.cos(deg);
+        const swSin = srcWidth * sin;
+        const swCos = srcWidth * cos;
+        const shSin = srcHeight * sin;
+        const shCos = srcHeight * cos;
+        const { width: canvasWidth, height: canvasHeight } = canvas;
         // 旋转坐标，确定源图裁剪范围
-        let [x1, y1] = getXY(angle, x, y);
-        let [x2, y2] = getXY(angle, x + width, y);
-        let [x3, y3] = getXY(angle, x + width, y + height);
-        let [x4, y4] = getXY(angle, x, y + height);
-        const [ix1, iy1] = getXY(angle, ihSin, 0);
-        const [ix2] = getXY(angle, cw, iwSin);
+        let [x1, y1] = getXY(deg, x, y);
+        let [x2, y2] = getXY(deg, x + width, y);
+        let [x3, y3] = getXY(deg, x + width, y + height);
+        let [x4, y4] = getXY(deg, x, y + height);
+        const [ix1, iy1] = getXY(deg, shSin, 0);
+        const [ix2] = getXY(deg, canvasWidth, swSin);
         // const [ix3, iy3] = getXY(angle, iw * cos, canvas.height);
-        const [, iy4] = getXY(angle, 0, ihCos);
+        const [, iy4] = getXY(deg, 0, shCos);
         let [nx1, nx3] = getStartEnd([x1, x2, x3, x4], [ix1, ix2]);
         let [ny1, ny3] = getStartEnd([y1, y2, y3, y4], [iy1, iy4]);
         if (nx1 === null || nx3 === null || ny1 === null || ny3 === null) {
@@ -259,61 +274,61 @@ export default class Sprite {
         let dimy = 0;
         let cWidth = width;
         let cHeight = height;
-        if (Math.round(nw) < Math.round(iw) || Math.round(nh) < Math.round(ih)) {
+        if (Math.round(nw) < Math.round(srcWidth) || Math.round(nh) < Math.round(srcHeight)) {
           // 裁剪canvas
           if (angle % 90) {
             // 确定4个相交点坐标
-            const tan = Math.tan(angle * (Math.PI / 180));
+            const tan = Math.tan(deg);
             let _x = x;
             let _y = y;
             if (x2 < ix1) {
-              const tmp = (ihSin - x - width) / tan - y;
+              const tmp = (shSin - x - width) / tan - y;
               cHeight -= tmp;
               _y += tmp;
               // console.log(`left裁剪高度 ${tmp}`, y, _y);
             }
             if (x4 < ix1) {
-              const tmp = (ihCos - y - height) * tan - x;
+              const tmp = (shCos - y - height) * tan - x;
               cWidth -= tmp;
               _x += tmp;
               // console.log(`left裁剪宽度 ${tmp}`, (ihCos - y - height) * tan, x);
             }
             if (x2 > ix2) {
-              const tmp = x + width - (cw - (y - iwSin) * tan);
+              const tmp = x + width - (canvasWidth - (y - swSin) * tan);
               cWidth -= tmp;
               // console.log(`right裁剪宽度 ${tmp}`);
             }
             if (x4 > ix2) {
-              const tmp = y + height - (ch - (x - iwCos) / tan);
+              const tmp = y + height - (canvasHeight - (x - swCos) / tan);
               cHeight -= tmp;
               // console.log(`right裁剪高度 ${tmp}`);
             }
             if (y1 < iy1) {
-              const tmp = (x - ihSin) * tan - y;
+              const tmp = (x - shSin) * tan - y;
               cHeight -= tmp;
               _y += tmp;
               // console.log(`top裁剪高度 ${tmp}`);
             }
             if (y3 < iy1) {
-              const tmp = x + width - (cw - (iwSin - y - height) / tan);
+              const tmp = x + width - (canvasWidth - (swSin - y - height) / tan);
               cWidth -= tmp;
               // console.log(`top裁剪宽度 ${tmp}`);
             }
             if (y1 > iy4) {
-              const tmp = (y - ihCos) / tan - x;
+              const tmp = (y - shCos) / tan - x;
               cWidth -= tmp;
               _x += tmp;
               // console.log(`bottom裁剪宽度 ${tmp}`);
             }
             if (y3 > iy4) {
-              const tmp = y + height - (ihCos + (x + width) * tan);
+              const tmp = y + height - (shCos + (x + width) * tan);
               cHeight -= tmp;
               // console.log(`bottom裁剪高度 ${tmp}`);
             }
-            [x1, y1] = getXY(angle, _x, _y);
-            [x2, y2] = getXY(angle, _x + cWidth, _y);
-            [x3, y3] = getXY(angle, _x + cWidth, _y + cHeight);
-            [x4, y4] = getXY(angle, _x, _y + cHeight);
+            [x1, y1] = getXY(deg, _x, _y);
+            [x2, y2] = getXY(deg, _x + cWidth, _y);
+            [x3, y3] = getXY(deg, _x + cWidth, _y + cHeight);
+            [x4, y4] = getXY(deg, _x, _y + cHeight);
             [nx1, nx3] = getStartEnd([x1, x2, x3, x4], [ix1, ix2]);
             [ny1, ny3] = getStartEnd([y1, y2, y3, y4], [iy1, iy4]);
           }
@@ -322,7 +337,7 @@ export default class Sprite {
           sy += (ny1 - iy1) / ry;
           nw = nx3 - nx1;
           nh = ny3 - ny1;
-          if (nw < iw || nh < ih) {
+          if (nw < srcWidth || nh < srcHeight) {
             sw = nw / rx;
             sh = nh / ry;
           }
@@ -358,13 +373,13 @@ export default class Sprite {
     this.rotate = (n) => {
       n = +n;
       if (!isNaN(n) && src) {
-        const dw = sw * rx;
-        const dh = sh * ry;
         angle = (360 + n) % 360;
         n = angle % 180;
         const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
-        canvas.width = (dw * Math.cos(a) + dh * Math.sin(a))|0;
-        canvas.height = (dh * Math.cos(a) + dw * Math.sin(a))|0;
+        const sin = Math.sin(a);
+        const cos = Math.cos(a);
+        canvas.width = (cw * cos + ch * sin)|0;
+        canvas.height = (ch * cos + cw * sin)|0;
         draw();
       }
       return this;

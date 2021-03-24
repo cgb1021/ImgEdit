@@ -311,7 +311,7 @@ export default class Editor {
       this.push({
         width,
         height,
-        angle
+        angle: sprite.angle
       })
     }
     this.toDataURL = (mime = 'image/jpeg', quality = .8) => {
