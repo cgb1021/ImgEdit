@@ -27,15 +27,15 @@ export default class Sprite {
     let canvas = null;
     let sw = 0; // 源图裁剪宽度
     let sh = 0; // 源图裁剪高度
-    let sx = 0; // 源图裁剪位移x轴
-    let sy = 0; // 源图裁剪位移y轴
-    let angle = 0; // canvas中心点旋转角度
-    let rx = 1; // canvas和src比率x轴
-    let ry = 1; // canvas和src比率y轴
-    let dx = 0;
-    let dy = 0;
-    let cw = 0;
-    let ch = 0;
+    let sx = 0; // 源图裁剪x轴位移
+    let sy = 0; // 源图裁剪y轴位移
+    let rx = 1; // 源图缩放x轴比率
+    let ry = 1; // 源图缩放y轴比率
+    let angle = 0; // 源图旋转角度
+    let dx = 0; // 画布x轴起点
+    let dy = 0; // 画布y轴起点
+    let cw = 0; // 0角度时画布宽度
+    let ch = 0; // 0角度时画布高度
 
     Object.defineProperties(this, {
       canvas: {
@@ -50,10 +50,16 @@ export default class Sprite {
             canvas = document.createElement('canvas');
           }
           if (src) {
-            canvas.width = sw;
-            canvas.height = sh;
+            cw = sw * rx;
+            ch = sh * ry;
+            const n = angle % 180;
+            const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
+            const sin = Math.sin(a);
+            const cos = Math.cos(a);
+            canvas.width = (cw * cos + ch * sin)|0;
+            canvas.height = (ch * cos + cw * sin)|0;
+            draw();
           }
-          draw();
         }
       },
       src: {
@@ -64,7 +70,7 @@ export default class Sprite {
         set(el) {
           if (el && (el instanceof Image || 'getContext' in el)) {
             src = el;
-            sx = sy = angle = 0;
+            dx = dy = sx = sy = angle = 0;
             rx = ry = 1;
             canvas.width = cw = sw = el.width;
             canvas.height = ch = sh = el.height;
@@ -89,13 +95,47 @@ export default class Sprite {
         }
       },
       sw: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            sw = n;
+          }
+        },
         get() {
           return sw;
         }
       },
       sh: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            sh = n;
+          }
+        },
         get() {
           return sh;
+        }
+      },
+      sx: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n) && n >= 0) {
+            sx = n;
+          }
+        },
+        get() {
+          return sx;
+        }
+      },
+      sy: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n) && n >= 0) {
+            sy = n;
+          }
+        },
+        get() {
+          return sy;
         }
       },
       angle: {
@@ -107,28 +147,6 @@ export default class Sprite {
         },
         get() {
           return angle;
-        }
-      },
-      sx: {
-        set(n) {
-          n = +n;
-          if (!isNaN(n)) {
-            sx = n;
-          }
-        },
-        get() {
-          return sx;
-        }
-      },
-      sy: {
-        set(n) {
-          n = +n;
-          if (!isNaN(n)) {
-            sy = n;
-          }
-        },
-        get() {
-          return sy;
         }
       },
       rx: {
@@ -151,6 +169,50 @@ export default class Sprite {
         },
         get() {
           return ry;
+        }
+      },
+      dx: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n) && n >= 0) {
+            dx = n;
+          }
+        },
+        get() {
+          return dx;
+        }
+      },
+      dy: {
+        set(n) {
+          n = +n;
+          if (!isNaN(n) && n >= 0) {
+            dy = n;
+          }
+        },
+        get() {
+          return dy;
+        }
+      },
+      cw: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            cw = n;
+          }
+        },
+        get() {
+          return cw;
+        }
+      },
+      ch: {
+        set(n) {
+          n = +n;
+          if (n && n > 0) {
+            ch = n;
+          }
+        },
+        get() {
+          return ch;
         }
       }
     })
@@ -175,10 +237,37 @@ export default class Sprite {
         }
         ctx.drawImage(src, sx|0, sy|0, sw|0, sh|0, x|0, y|0, dw|0, dh|0);
         ctx.restore();
-        // console.log('sprite draw', sx|0, sy|0, sw|0, sh|0, x|0, y|0, dw|0, dh|0);
-      } else {
-        console.log('no src')
+        // console.log('sprite draw', angle, sx|0, sy|0, sw|0, sh|0, x|0, y|0, dw|0, dh|0);
       }
+    }
+    this.toJSON = () => {
+      return {
+        sw,
+        sh,
+        sx,
+        sy,
+        angle,
+        rx,
+        ry,
+        dx,
+        dy,
+        cw,
+        ch
+      }
+    }
+    this.fromJSON = (json) => {
+      for (let k in json) {
+        if (typeof this[k] !== 'undefined') {
+          this[k] = json[k];
+        }
+        const n = angle % 180;
+        const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
+        const sin = Math.sin(a);
+        const cos = Math.cos(a);
+        canvas.width = (cw * cos + ch * sin)|0;
+        canvas.height = (ch * cos + cw * sin)|0;
+      }
+      draw();
     }
     /*
      * @description 设置宽高（canvas）
@@ -191,28 +280,42 @@ export default class Sprite {
           width,
           height
         } = canvas;
+        let cWidth = 0;
+        let cHeight = 0;
         if (args.length) {
           const w = +args[0];
           const h = args.length > 1 ? +args[1] : 0;
           const ratio = width / height;
           if (w && h) {
-            canvas.width = w|0;
-            canvas.height = h|0;
+            cWidth = w;
+            cHeight = h;
           } else if (w) {
-            canvas.width = w|0;
-            canvas.height = (w / ratio)|0;
+            cWidth = w;
+            cHeight = w / ratio;
           } else if (h) {
-            canvas.width = (h * ratio)|0;
-            canvas.height = h|0;
+            cWidth = h * ratio;
+            cHeight = h;
           }
+          const rw = cWidth / width;
+          const rh = cHeight / height;
+          rx *= rw;
+          ry *= rh;
+          cw *= rw;
+          ch *= rh;
         } else {
-          canvas.width = cw;
-          canvas.height = ch;
+          const n = angle % 180;
+          const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
+          const sin = Math.sin(a);
+          const cos = Math.cos(a);
+          cw = sw * rx;
+          ch = sh * ry;
+          cWidth = cw * cos + ch * sin;
+          cHeight = ch * cos + cw * sin;
         }
+        canvas.width = cWidth|0;
+        canvas.height = cHeight|0;
         // const a = Math.abs((angle % 90) * (Math.PI / 180));
         // dw *= (canvas.width / Math.cos(a) - canvas.height * Math.tan(a) / Math.cos(a)) / (1 + Math.tan(a) * Math.tan(a));
-        rx *= canvas.width / width;
-        ry *= canvas.height / height;
         draw();
       }
       return this;
@@ -425,6 +528,16 @@ export default class Sprite {
           }
           dx += dimx * 0.5;
           dy += dimy * 0.5;
+          const n = angle % 180;
+          const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
+          const sin = Math.sin(a);
+          const cos = Math.cos(a);
+          const tan = Math.tan(a);
+          cw = (cWidth - cHeight * tan) / (cos - sin * tan);
+          ch = (cHeight - cWidth * tan) / (cos - sin * tan);
+        } else {
+          cw = cWidth;
+          ch = cHeight;
         }
         canvas.width = cWidth|0;
         canvas.height = cHeight|0;
@@ -437,9 +550,8 @@ export default class Sprite {
      * @param {number} 角度
      */
     this.rotate = (n) => {
-      n = +n;
-      if (!isNaN(n) && src) {
-        angle = (360 + n) % 360;
+      if (src) {
+        this.angle = n;
         n = angle % 180;
         const a = (n > 90 ? 180 - n : n) * (Math.PI / 180);
         const sin = Math.sin(a);
@@ -463,7 +575,9 @@ export default class Sprite {
    * @return {Promise}
    */
   toDataURL(mime = 'image/jpeg', quality = .8) {
-    return this.src.toDataURL(mime, quality);
+    return new Promise(resolve => {
+      resolve(this.src.toDataURL(mime, quality));
+    })
   }
   /*
    * @description 输出图像为blob
@@ -472,6 +586,30 @@ export default class Sprite {
    * @return {Promise}
    */
   toBlob(mime = 'image/jpeg', quality = .8) {
-    return this.src.toBlob(mime, quality);
+    return new Promise(resolve => {
+      this.src.toBlob(blob => {
+        resolve(blob)
+      },
+      mime,
+      quality
+      )
+    })
+  }
+  /*
+   * @description 输出图像为file类型
+   * @param {string} name
+   * @param {string} mime
+   * @param {number} quality
+   * @return {Promise}
+   */
+  toFile(name, mime = 'image/jpeg', quality = .8) {
+    return new Promise(resolve => {
+      this.src.toBlob(blob => {
+        resolve(new File([blob], String(name), { type: mime, lastModified: Date.now() }))
+      },
+      mime,
+      quality
+      )
+    })
   }
 }
