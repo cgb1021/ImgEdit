@@ -38,6 +38,7 @@ export default class Sprite {
     let dy = 0; // 画布y轴起点
     let cw = 0; // 0角度时画布宽度
     let ch = 0; // 0角度时画布高度
+    let noDraw = false
 
     Object.defineProperties(this, {
       canvas: {
@@ -60,7 +61,10 @@ export default class Sprite {
             const cos = Math.cos(a);
             canvas.width = (cw * cos + ch * sin)|0;
             canvas.height = (ch * cos + cw * sin)|0;
-            draw();
+            if (!noDraw) {
+              draw();
+            }
+            noDraw = false
           }
         }
       },
@@ -218,6 +222,14 @@ export default class Sprite {
         }
       }
     })
+    const save = () => {
+      const img = new Image
+      img.onload = () => {
+        noDraw = true
+        this.src = img
+      }
+      img.src = canvas.toDataURL()
+    }
     function draw() {
       if (src) {
         const ctx = canvas.getContext('2d');
@@ -544,6 +556,7 @@ export default class Sprite {
         canvas.width = cWidth|0;
         canvas.height = cHeight|0;
         draw();
+        save();
       }
       return this;
     }
