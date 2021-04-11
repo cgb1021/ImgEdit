@@ -1,6 +1,6 @@
 {
   "name": "imgedit",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "HTML5 img editor",
   "main": "lib/index.js",
   "module": "es/index.js",
