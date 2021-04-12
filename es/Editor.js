@@ -1,5 +1,5 @@
 import Sprite from './Sprite'
-import Utils from './Utils'
+import { loadImg, readFile } from './Utils'
 
 function querySelector (el) {
   if (typeof el !== 'object') {
@@ -244,9 +244,9 @@ export default class Editor {
       try {
         if (file instanceof Image) {
           if (/^blob:/.test(file.src)) img = file;
-          else img = await Utils.loadImg(file.src);
+          else img = await loadImg(file.src);
         } else {
-          img = await Utils.loadImg(typeof file === 'object' ? await Utils.readFile(file) : file);
+          img = await loadImg(typeof file === 'object' ? await readFile(file) : file);
         }
       } catch(e) {
         console.log(e);

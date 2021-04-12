@@ -12,7 +12,7 @@ import Sprite from './Sprite'
  * @param {string} url
  * @return {object} promise
  */
-const fetchImg = (url) => {
+export const fetchImg = (url) => {
   return new Promise((resolve, reject) => {
     if (!url || typeof url !== 'string' || !/^(?:https?:)?\/\//i.test(url)) reject(0);
     const xhr = new XMLHttpRequest();
@@ -52,7 +52,7 @@ const fetchImg = (url) => {
  * @param {string} src url/base64
  * @return {object} promise
  */
-const loadImg = (src) => {
+export const loadImg = (src) => {
   return new Promise((resolve, reject) => {
     if (!src || typeof src !== 'string' || !/^(?:data:image\/[^;]+;\s*base64\s*,|(?:https?:)?\/\/)/i.test(src)) {
       reject(0);
@@ -78,7 +78,7 @@ const loadImg = (src) => {
  * @param {blob} file
  * @return {object} promise
  */
-const readFile = (file) => {
+export const readFile = (file) => {
   return new Promise((resolve, reject) => {
     if (!file || typeof file !== 'object') reject(0);
     let fileReader = new FileReader;
@@ -100,7 +100,7 @@ const readFile = (file) => {
  * @param {blob} file
  * @return {object} promise
  */
-const preview = (file) => {
+export const preview = (file) => {
   return new Promise((resolve, reject) => {
     if (!file || typeof file !== 'object') reject(0);
     let img = new Image;
@@ -114,7 +114,7 @@ const preview = (file) => {
     resolve(img);
   })
 }
-const resize = async (img, width, height) => {
+export const resize = async (img, width, height) => {
   if (!width && !height) return false;
   if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
     img = await fetchImg(img);
@@ -124,7 +124,7 @@ const resize = async (img, width, height) => {
   const b64 = edit.resize(width, height).toDataURL(mime);
   return b64;
 }
-const cut = async (img, width, height, x, y) => {
+export const cut = async (img, width, height, x, y) => {
   if (!width && !height) return false;
   if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
     img = await fetchImg(img);
@@ -134,7 +134,7 @@ const cut = async (img, width, height, x, y) => {
   const b64 = edit.cut(width, height, x, y).toDataURL(mime);
   return b64;
 }
-const rotate = async (img, deg) => {
+export const rotate = async (img, deg) => {
   if (!deg) return false;
   if (typeof img === 'string' && /^(?:https?:)?\/\//.test(img)) {
     img = await fetchImg(img);
@@ -143,14 +143,4 @@ const rotate = async (img, deg) => {
   const edit = new Sprite(img);
   const b64 = edit.rotate(deg).toDataURL(mime);
   return b64;
-}
-
-export default {
-  rotate,
-  cut,
-  resize,
-  preview,
-  readFile,
-  loadImg,
-  fetchImg
 }
